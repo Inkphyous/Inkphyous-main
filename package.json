@@ -1,0 +1,32 @@
+{
+  "name": "inkphyous",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "supabase:seed-catalog": "node scripts/supabase/seed-catalog.mjs",
+    "supabase:seed-catalog:dry": "node scripts/supabase/seed-catalog.mjs --dry-run"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.3.0",
+    "@supabase/supabase-js": "^2.106.1",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@vercel/analytics": "^2.0.1",
+    "autoprefixer": "^10.5.0",
+    "firebase": "^12.13.0",
+    "framer-motion": "^12.12.2",
+    "lucide-react": "^0.503.0",
+    "next": "^15.3.3",
+    "postcss": "^8.5.15",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.3.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.4.0"
+  }
+}

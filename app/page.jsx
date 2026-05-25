@@ -1,0 +1,179 @@
+"use client";
+
+import { Suspense, lazy, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { MoreVertical } from "lucide-react";
+import { useStore } from "@/components/providers/StoreProvider";
+import Header from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
+import Carousel from "@/components/Carousel";
+import ProductDetail from "@/components/ProductDetail";
+import GridView from "@/components/GridView";
+import Footer from "@/components/Footer";
+
+const LogoScene = lazy(() => import("@/components/LogoScene"));
+
+function HomePageInner() {
+  const searchParams = useSearchParams();
+  const openedFromQueryRef = useRef(false);
+  const {
+    showIntro,
+    setShowIntro,
+    viewMode,
+    productsLoading,
+    openPDPByProductAndVariant,
+    categories,
+    activeCategory,
+    setActiveCategory,
+    t,
+  } = useStore();
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+
+  useEffect(() => {
+    if (productsLoading || openedFromQueryRef.current) return;
+
+    const variantId = searchParams.get("variantId");
+    const productId = searchParams.get("productId");
+    if (!variantId && !productId) return;
+
+    openedFromQueryRef.current = true;
+    openPDPByProductAndVariant({ productId, variantId });
+  }, [productsLoading, searchParams, openPDPByProductAndVariant]);
+
+  useEffect(() => {
+    if (viewMode !== "carousel") {
+      setMobileCategoriesOpen(false);
+    }
+  }, [viewMode]);
+
+  if (showIntro) {
+    return (
+      <Suspense
+        fallback={
+          <div
+            style={{
+              position: "fixed",
+              bottom: "40px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "16px",
+              zIndex: 10001,
+            }}
+          >
+            <p
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontSize: "12px",
+                color: "#999",
+                fontWeight: 500,
+                pointerEvents: "none",
+                opacity: 0, // Keep space reserved but hidden while loading
+              }}
+            >
+              Loading...
+            </p>
+            <button
+              onClick={() => setShowIntro(false)}
+              style={{
+                padding: "10px 24px",
+                border: "1px solid #ccc",
+                borderRadius: "24px",
+                background: "none",
+                color: "#444",
+                fontFamily: "'Inter', sans-serif",
+                fontSize: "12px",
+                fontWeight: "500",
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                cursor: "pointer",
+              }}
+            >
+              Skip Intro
+            </button>
+          </div>
+        }
+      >
+        <LogoScene onIntroComplete={() => setShowIntro(false)} />
+      </Suspense>
+    );
+  }
+
+  return (
+    <>
+      <Header />
+      <Sidebar />
+
+      {(viewMode === "carousel" || viewMode === "grid") && (
+        <div className={`mobile-category-fab ${mobileCategoriesOpen ? "is-open" : ""}`}>
+          <button
+            className="mobile-category-fab__toggle"
+            onClick={() => setMobileCategoriesOpen((prev) => !prev)}
+            aria-label="Toggle categories"
+          >
+            <MoreVertical size={16} strokeWidth={2.5} />
+          </button>
+
+          <AnimatePresence>
+            {mobileCategoriesOpen && (
+              <motion.div
+                className="mobile-category-panel"
+                initial={{ opacity: 0, scale: 0.2, y: -6, x: -6 }}
+                animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                exit={{ opacity: 0, scale: 0.2, y: -6, x: -6 }}
+                transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                style={{ transformOrigin: "top left" }}
+              >
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat;
+                  return (
+                    <motion.button
+                      key={cat}
+                      className={`sidebar__category mobile-category-panel__item ${
+                        isActive ? "sidebar__category--active" : "sidebar__category--sm"
+                      }`}
+                      onClick={() => {
+                        setActiveCategory(cat);
+                        setMobileCategoriesOpen(false);
+                      }}
+                      layout
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    >
+                      {cat === "All"
+                        ? t("all").toUpperCase()
+                        : t(cat.toLowerCase()).toUpperCase()}
+                    </motion.button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {(viewMode === "carousel" || viewMode === "pdp") && <Carousel />}
+
+      <AnimatePresence mode="wait">
+        {viewMode === "grid" && <GridView key="grid" />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewMode === "pdp" && <ProductDetail key="pdp" />}
+      </AnimatePresence>
+
+      <Footer />
+    </>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomePageInner />
+    </Suspense>
+  );
+}
