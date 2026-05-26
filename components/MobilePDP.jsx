@@ -365,7 +365,7 @@ export default function MobilePDP({
       </div>
 
       {/* Description */}
-      <p
+      <div
         style={{
           fontFamily: "var(--font-body)",
           fontSize: "12px",
@@ -373,11 +373,12 @@ export default function MobilePDP({
           lineHeight: 1.7,
           margin: "0 0 14px 0",
         }}
-      >
-        {language === "ar" && product.descriptionAr
-          ? product.descriptionAr
-          : product.description}
-      </p>
+        dangerouslySetInnerHTML={{
+          __html: language === "ar" && product.descriptionAr
+            ? product.descriptionAr
+            : product.description
+        }}
+      />
 
       {/* Horizontal scroll preview images */}
       <div
