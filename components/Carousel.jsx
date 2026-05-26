@@ -199,8 +199,8 @@ export default function Carousel() {
 
   const slotStyles = {
     center: { x: "0%", y: "0%", scale: 1, opacity: 1, filter: "blur(0px)", zIndex: 10 },
-    left: { x: "-80%", y: "4%", scale: 0.5, opacity: 0.5, filter: "blur(6px)", zIndex: 4 },
-    right: { x: "75%", y: "4%", scale: 0.5, opacity: 0.5, filter: "blur(6px)", zIndex: 4 },
+    left: { x: "-85%", y: "4%", scale: 0.5, opacity: 0.5, filter: "blur(6px)", zIndex: 4 },
+    right: { x: "80%", y: "4%", scale: 0.5, opacity: 0.5, filter: "blur(6px)", zIndex: 4 },
     behindLeft: { x: "-25%", y: "6%", scale: 0.2, opacity: 0, filter: "blur(14px)", zIndex: 1 },
     behindRight: { x: "25%", y: "6%", scale: 0.2, opacity: 0, filter: "blur(14px)", zIndex: 1 },
     hidden: { x: "0%", y: "8%", scale: 0.2, opacity: 0, filter: "blur(14px)", zIndex: 0 },

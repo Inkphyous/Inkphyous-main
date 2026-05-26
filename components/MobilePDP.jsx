@@ -156,14 +156,38 @@ export default function MobilePDP({
         </p>
       </div>
 
-      {/* ---- SWATCHES + PRICE row (same row, right-aligned — matches desktop) ---- */}
+      {/* ---- PRICE ---- */}
       <div
         style={{
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "flex-end",
-          gap: "14px",
+          width: "100%",
+          marginBottom: "10px",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-heading)",
+            fontSize: "28px",
+            fontWeight: 700,
+            color: "var(--color-text)",
+            letterSpacing: "0.5px",
+            lineHeight: 1,
+          }}
+        >
+          ₹{product.discountPriceINR || product.priceINR}
+        </div>
+      </div>
+
+      {/* ---- SWATCHES ---- */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-end",
           width: "100%",
           marginBottom: "10px",
         }}
@@ -195,18 +219,6 @@ export default function MobilePDP({
               }}
             />
           ))}
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "28px",
-            fontWeight: 700,
-            color: "var(--color-text)",
-            letterSpacing: "0.5px",
-            lineHeight: 1,
-          }}
-        >
-          ₹{product.discountPriceINR || product.priceINR}
         </div>
       </div>
 

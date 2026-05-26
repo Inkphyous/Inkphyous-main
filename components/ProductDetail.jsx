@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Heart, ShoppingCart, ChevronDown, ChevronLeft, ChevronRight, X, Share2 } from "lucide-react";
 import { useStore } from "./providers/StoreProvider";
+import Footer from "./Footer";
 import MobilePDP from "./MobilePDP";
 
 function Accordion({ title, content, isOpen, onClick }) {
@@ -139,28 +141,24 @@ export default function ProductDetail() {
     return () => document.body.classList.remove("lightbox-open");
   }, [lightboxIndex]);
 
-  // Scroll handler — drives zoom/blur/center on the carousel behind
   const handleScroll = useCallback(() => {
     const el = overlayRef.current;
     if (!el) return;
     const scrollTop = el.scrollTop;
-    // Progress 0→1 over first 400px of scroll. Clamp to 0 to prevent negative elastic bounce!
     const progress = Math.max(0, Math.min(scrollTop / 400, 1));
 
     const carouselEl = document.getElementById("carousel-element");
     if (carouselEl) {
       const stage = carouselEl.querySelector(".carousel__stage");
       if (stage) {
-        // Mobile animations: start EXACTLY at CSS values (-16%, 1.05) to prevent jumping
         const isMobileSize = window.innerWidth <= 600;
         
         if (isMobileSize) {
           const baseScale = 1.05;
           const baseTranslateY = 16;
           
-          // Gentle zoom and move down
-          const extraScale = baseScale + progress * 0.1; // 1.05 -> 1.15
-          const currentTranslateY = baseTranslateY - progress * 4; // 16 -> 12 (moves down)
+          const extraScale = baseScale + progress * 0.1;
+          const currentTranslateY = baseTranslateY - progress * 4;
           
           const blur = progress * 10;
           const opacity = 1 - progress * 0.3;
@@ -169,17 +167,14 @@ export default function ProductDetail() {
           stage.style.filter = `blur(${blur}px)`;
           stage.style.opacity = `${opacity}`;
         } else {
-          // Desktop animations
-          const extraScale = 1.2 + progress * 0.3; // 1.2 → 1.50
+          const extraScale = 1.2 + progress * 0.3;
           const blur = progress * 10;
           const opacity = 1 - progress * 0.3;
-          stage.style.transform = `translateY(-${18 - progress * 8}%) scale(${extraScale})`;
+          stage.style.transform = `translateY(-${15 - progress * 8}%) scale(${extraScale})`;
           stage.style.filter = `blur(${blur}px)`;
           stage.style.opacity = `${opacity}`;
         }
         
-        // Remove CSS transition while scrolling so it tracks perfectly without lag.
-        // Restore it when at the top so the initial/close animations are smooth.
         if (progress > 0) {
           stage.style.transition = "none";
         } else {
@@ -187,19 +182,17 @@ export default function ProductDetail() {
         }
       }
 
-      // Show global footer when the right side has stopped scrolling (is sticky)
       const footerEl = document.getElementById("global-footer");
       if (footerEl) {
-        // On desktop (fixed footer), show footer when details are fully scrolled
         const detailsEl = el.querySelector(".pdp-overlay__details-wrap");
         if (detailsEl) {
           const rect = detailsEl.getBoundingClientRect();
           if (rect.top <= 1) {
             footerEl.style.opacity = "1";
-            footerEl.style.pointerEvents = "auto";
+            footerEl.style.visibility = "visible";
           } else {
             footerEl.style.opacity = "0";
-            footerEl.style.pointerEvents = "none";
+            footerEl.style.visibility = "hidden";
           }
         }
       }
@@ -210,9 +203,12 @@ export default function ProductDetail() {
     const el = overlayRef.current;
     if (!el) return;
     el.addEventListener("scroll", handleScroll, { passive: true });
+    
+    // Evaluate initial state immediately so the dashboard footer doesn't stay visible
+    handleScroll();
+    
     return () => {
       el.removeEventListener("scroll", handleScroll);
-      // Reset carousel transform on unmount
       const carouselEl = document.getElementById("carousel-element");
       if (carouselEl) {
         const stage = carouselEl.querySelector(".carousel__stage");
@@ -220,8 +216,14 @@ export default function ProductDetail() {
           stage.style.transform = "";
           stage.style.filter = "";
           stage.style.opacity = "";
-          stage.style.transition = ""; // Critical to restore CSS transition if user exits while scrolled
+          stage.style.transition = "";
         }
+      }
+      
+      const footerEl = document.getElementById("global-footer");
+      if (footerEl) {
+        footerEl.style.opacity = "";
+        footerEl.style.visibility = "";
       }
     };
   }, [handleScroll]);
@@ -233,20 +235,19 @@ export default function ProductDetail() {
     return () => window.removeEventListener("resize", updateMobile);
   }, []);
 
-  // Hide global footer when mobile PDP is open (it has its own footer inside)
   useEffect(() => {
     if (!isMobile) return;
     const footerEl = document.getElementById("global-footer");
     if (footerEl) {
       footerEl.style.display = "none";
       footerEl.style.opacity = "0";
-      footerEl.style.pointerEvents = "none";
+      footerEl.style.visibility = "hidden";
     }
     return () => {
       if (footerEl) {
         footerEl.style.display = "";
         footerEl.style.opacity = "1";
-        footerEl.style.pointerEvents = "auto";
+        footerEl.style.visibility = "visible";
       }
     };
   }, [isMobile]);
@@ -303,11 +304,10 @@ export default function ProductDetail() {
       quantity: 1,
     });
     if (!added) return;
-    setNotificationMessage(`🛒 ${t("addedToBag")}`);
+    setNotificationMessage(` ${t("addedToBag")}`);
     setTimeout(() => setNotificationMessage(""), 3000);
   };
 
-  // ───── MOBILE: render inside pdp-overlay (transition preserved) but OUTSIDE grid/details ─────
   if (isMobile) {
     return (
       <motion.div
@@ -318,10 +318,8 @@ export default function ProductDetail() {
         exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 100, damping: 20, mass: 0.8 }}
       >
-        {/* Transparent spacer — dashboard carousel visible behind */}
         <div className="pdp-overlay__spacer" />
 
-        {/* Mobile PDP content — uses identical gradient class to desktop */}
         <div className="pdp-overlay__content">
           <MobilePDP
             product={product}
@@ -340,7 +338,6 @@ export default function ProductDetail() {
           />
         </div>
 
-        {/* Notification */}
         <AnimatePresence>
           {notificationMessage && (
             <motion.div
@@ -355,50 +352,51 @@ export default function ProductDetail() {
           )}
         </AnimatePresence>
 
-        {/* Image Lightbox */}
-        <AnimatePresence>
-          {lightboxIndex !== null && (
-            <motion.div
-              className="pdp-lightbox"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setLightboxIndex(null)}
-            >
-              <button className="pdp-lightbox__close" style={{ zIndex: 99999, pointerEvents: "auto" }}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex(null); }}>
-                <X size={24} strokeWidth={2} style={{ pointerEvents: "none" }} />
-              </button>
-              {galleryImages.length > 1 && (
-                <button className="pdp-lightbox__arrow pdp-lightbox__arrow--left"
-                  style={{ zIndex: 99999, pointerEvents: "auto" }}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1)); }}>
-                  <ChevronLeft size={32} strokeWidth={2} style={{ pointerEvents: "none" }} />
+        {createPortal(
+          <AnimatePresence>
+            {lightboxIndex !== null && (
+              <motion.div
+                className="pdp-lightbox"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setLightboxIndex(null)}
+              >
+                <button className="pdp-lightbox__close" style={{ zIndex: 99999, pointerEvents: "auto" }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex(null); }}>
+                  <X size={24} strokeWidth={2} style={{ pointerEvents: "none" }} />
                 </button>
-              )}
-              <motion.div className="pdp-lightbox__image-wrap" key={lightboxIndex}
-                initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.2 }}
-                onClick={(e) => e.stopPropagation()} style={{ zIndex: 1000 }}>
-                <img src={galleryImages[lightboxIndex]} alt={`${product.name} view ${lightboxIndex + 1}`} className="pdp-lightbox__image" />
+                {galleryImages.length > 1 && (
+                  <button className="pdp-lightbox__arrow pdp-lightbox__arrow--left"
+                    style={{ zIndex: 99999, pointerEvents: "auto" }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1)); }}>
+                    <ChevronLeft size={32} strokeWidth={2} style={{ pointerEvents: "none" }} />
+                  </button>
+                )}
+                <motion.div className="pdp-lightbox__image-wrap" key={lightboxIndex}
+                  initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.2 }}
+                  onClick={(e) => e.stopPropagation()} style={{ zIndex: 1000 }}>
+                  <img src={galleryImages[lightboxIndex]} alt={`${product.name} view ${lightboxIndex + 1}`} className="pdp-lightbox__image" />
+                </motion.div>
+                {galleryImages.length > 1 && (
+                  <button className="pdp-lightbox__arrow pdp-lightbox__arrow--right"
+                    style={{ zIndex: 99999, pointerEvents: "auto" }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0)); }}>
+                    <ChevronRight size={32} strokeWidth={2} style={{ pointerEvents: "none" }} />
+                  </button>
+                )}
+                <div className="pdp-lightbox__counter">{lightboxIndex + 1} / {galleryImages.length}</div>
               </motion.div>
-              {galleryImages.length > 1 && (
-                <button className="pdp-lightbox__arrow pdp-lightbox__arrow--right"
-                  style={{ zIndex: 99999, pointerEvents: "auto" }}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0)); }}>
-                  <ChevronRight size={32} strokeWidth={2} style={{ pointerEvents: "none" }} />
-                </button>
-              )}
-              <div className="pdp-lightbox__counter">{lightboxIndex + 1} / {galleryImages.length}</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
       </motion.div>
     );
   }
 
-  // ───── DESKTOP: render the original pdp-overlay (completely untouched) ─────
   return (
     <motion.div
       ref={overlayRef}
@@ -408,10 +406,8 @@ export default function ProductDetail() {
       exit={{ y: "100%" }}
       transition={{ type: "spring", stiffness: 100, damping: 20, mass: 0.8 }}
     >
-      {/* Transparent spacer — products visible behind */}
       <div className="pdp-overlay__spacer" />
 
-      {/* Content — semi-transparent background */}
       <motion.div
         className="pdp-overlay__content"
         initial={{ opacity: 0 }}
@@ -421,9 +417,7 @@ export default function ProductDetail() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* 2-column: Gallery | Sticky details */}
         <div className="pdp-overlay__grid">
-          {/* Left: Brand + Gallery */}
           <div className="pdp-overlay__gallery">
             <div className="pdp-overlay__brand-section" style={{ marginBottom: "20px" }}>
               <AnimatePresence mode="wait">
@@ -474,7 +468,6 @@ export default function ProductDetail() {
             ))}
           </div>
 
-          {/* Right: Sticky details */}
           <div className="pdp-overlay__details-wrap">
             <motion.div
               className="pdp-overlay__details"
@@ -482,7 +475,6 @@ export default function ProductDetail() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, type: "spring", stiffness: 200, damping: 25 }}
             >
-               {/* ====== DESKTOP PDP DETAILS ====== */}
                   <div className="pdp-overlay__mobile-header">
                     <div className="pdp-overlay__mobile-brand-row">
                       <h1 className="pdp-overlay__brand">{product.brand}</h1>
@@ -492,18 +484,16 @@ export default function ProductDetail() {
                   </div>
 
                   <div className="pdp-overlay__selection-block">
-                    <div className="pdp-overlay__price-row">
-                      <div className="pdp-overlay__swatches">
-                        {product.variants.map((v) => (
-                          <button key={v.id}
-                            className={`pdp-overlay__color ${variant.id === v.id ? "pdp-overlay__color--active" : ""}`}
-                            style={{ backgroundColor: v.colorHex || v.color?.toLowerCase() || "#ccc" }}
-                            onClick={() => setPdpVariantId(v.id)} aria-label={`Select ${v.color}`} />
-                        ))}
-                      </div>
-                      <div className="pdp-overlay__price-section">
-                        <span className="pdp-overlay__price">₹{product.discountPriceINR || product.priceINR}</span>
-                      </div>
+                    <div className="pdp-overlay__price-section" style={{ alignSelf: "flex-end", marginBottom: "8px" }}>
+                      <span className="pdp-overlay__price">₹{product.discountPriceINR || product.priceINR}</span>
+                    </div>
+                    <div className="pdp-overlay__swatches" style={{ alignSelf: "flex-end", marginBottom: "8px" }}>
+                      {product.variants.map((v) => (
+                        <button key={v.id}
+                          className={`pdp-overlay__color ${variant.id === v.id ? "pdp-overlay__color--active" : ""}`}
+                          style={{ backgroundColor: v.colorHex || v.color?.toLowerCase() || "#ccc" }}
+                          onClick={() => setPdpVariantId(v.id)} aria-label={`Select ${v.color}`} />
+                      ))}
                     </div>
                     <div className="pdp-overlay__sizes pdp-overlay__sizes-row">
                       {variantSizes.map(({ size, inStock }) => (
@@ -564,17 +554,16 @@ export default function ProductDetail() {
                   <Accordion title={`Reviews (${product.reviews})`} content={`${product.rating}/5 stars from ${product.reviews} reviews`}
                     isOpen={activeAccordion === "reviews"} onClick={() => setActiveAccordion(activeAccordion === "reviews" ? null : "reviews")} />
 
-                  <div className="pdp-overlay__mobile-footer">
-                    <Link href="/contact" className="footer-links__item title">{t("contact")}</Link>
-                    <Link href="/legal" className="footer-links__item title">{t("legalities")}</Link>
-                    <a href="https://instagram.com/inkphyous" target="_blank" rel="noopener noreferrer" className="footer-links__item title">{t("social")}</a>
-                  </div>
+
             </motion.div>
           </div>
         </div>
+
+        <div className="pdp-overlay__mobile-footer" style={{ display: isMobile ? "block" : "none", marginTop: "40px" }}>
+          <Footer isInline />
+        </div>
       </motion.div>
 
-      {/* Notification */}
       <AnimatePresence>
         {notificationMessage && (
           <motion.div
@@ -589,92 +578,94 @@ export default function ProductDetail() {
         )}
       </AnimatePresence>
 
-      {/* Image Lightbox */}
-      <AnimatePresence>
-        {lightboxIndex !== null && (
-          <motion.div
-            className="pdp-lightbox"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => setLightboxIndex(null)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setLightboxIndex(null);
-              if (e.key === "ArrowLeft") setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
-              if (e.key === "ArrowRight") setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
-            }}
-            tabIndex={0}
-            ref={(el) => el && el.focus()}
-          >
-            {/* Close button */}
-            <button
-              className="pdp-lightbox__close"
-              style={{ zIndex: 99999, pointerEvents: 'auto' }}
-              onClick={(e) => { 
-                e.preventDefault();
-                e.stopPropagation(); 
-                setLightboxIndex(null); 
-              }}
-            >
-              <X size={24} strokeWidth={2} style={{ pointerEvents: 'none' }} />
-            </button>
-
-            {/* Left arrow */}
-            {galleryImages.length > 1 && (
-              <button
-                className="pdp-lightbox__arrow pdp-lightbox__arrow--left"
-                style={{ zIndex: 99999, pointerEvents: 'auto' }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
-                }}
-              >
-                <ChevronLeft size={32} strokeWidth={2} style={{ pointerEvents: 'none' }} />
-              </button>
-            )}
-
-            {/* Image */}
+      {createPortal(
+        <AnimatePresence>
+          {lightboxIndex !== null && (
             <motion.div
-              className="pdp-lightbox__image-wrap"
-              key={lightboxIndex}
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
+              className="pdp-lightbox"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{ zIndex: 1000 }}
+              onClick={() => setLightboxIndex(null)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setLightboxIndex(null);
+                if (e.key === "ArrowLeft") setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
+                if (e.key === "ArrowRight") setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
+              }}
+              tabIndex={0}
+              ref={(el) => el && el.focus()}
             >
-              <img
-                src={galleryImages[lightboxIndex]}
-                alt={`${product.name} view ${lightboxIndex + 1}`}
-                className="pdp-lightbox__image"
-              />
-            </motion.div>
-
-            {/* Right arrow */}
-            {galleryImages.length > 1 && (
+              {/* Close button */}
               <button
-                className="pdp-lightbox__arrow pdp-lightbox__arrow--right"
+                className="pdp-lightbox__close"
                 style={{ zIndex: 99999, pointerEvents: 'auto' }}
-                onClick={(e) => {
+                onClick={(e) => { 
                   e.preventDefault();
-                  e.stopPropagation();
-                  setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
+                  e.stopPropagation(); 
+                  setLightboxIndex(null); 
                 }}
               >
-                <ChevronRight size={32} strokeWidth={2} style={{ pointerEvents: 'none' }} />
+                <X size={24} strokeWidth={2} style={{ pointerEvents: 'none' }} />
               </button>
-            )}
 
-            {/* Counter */}
-            <div className="pdp-lightbox__counter">
-              {lightboxIndex + 1} / {galleryImages.length}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {/* Left arrow */}
+              {galleryImages.length > 1 && (
+                <button
+                  className="pdp-lightbox__arrow pdp-lightbox__arrow--left"
+                  style={{ zIndex: 99999, pointerEvents: 'auto' }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
+                  }}
+                >
+                  <ChevronLeft size={32} strokeWidth={2} style={{ pointerEvents: 'none' }} />
+                </button>
+              )}
+
+              {/* Image */}
+              <motion.div
+                className="pdp-lightbox__image-wrap"
+                key={lightboxIndex}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.2 }}
+                onClick={(e) => e.stopPropagation()}
+                style={{ zIndex: 1000 }}
+              >
+                <img
+                  src={galleryImages[lightboxIndex]}
+                  alt={`${product.name} view ${lightboxIndex + 1}`}
+                  className="pdp-lightbox__image"
+                />
+              </motion.div>
+
+              {/* Right arrow */}
+              {galleryImages.length > 1 && (
+                <button
+                  className="pdp-lightbox__arrow pdp-lightbox__arrow--right"
+                  style={{ zIndex: 99999, pointerEvents: 'auto' }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
+                  }}
+                >
+                  <ChevronRight size={32} strokeWidth={2} style={{ pointerEvents: 'none' }} />
+                </button>
+              )}
+
+              {/* Counter */}
+              <div className="pdp-lightbox__counter">
+                {lightboxIndex + 1} / {galleryImages.length}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </motion.div>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { app as defaultApp } from "@/lib/firebase";
-import { Plus, Save, Trash2, LogOut, Users } from "lucide-react";
+import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download } from "lucide-react";
 import { ref, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
@@ -165,6 +165,9 @@ export default function AdminPage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("products");
   const [usersList, setUsersList] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [queriesList, setQueriesList] = useState([]);
+  const [queriesLoading, setQueriesLoading] = useState(false);
   const [draft, setDraft] = useState(emptyDraft());
   const [isNewCategory, setIsNewCategory] = useState(false);
   const [uploadingKey, setUploadingKey] = useState("");
@@ -229,6 +232,7 @@ export default function AdminPage() {
   }, [idToken, isAdmin]);
 
   const loadUsers = async (token) => {
+    setUsersLoading(true);
     try {
       const res = await fetch("/api/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
@@ -247,12 +251,84 @@ export default function AdminPage() {
     } catch (err) {
       console.error("Failed to load users:", err);
       setUsersList([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const loadQueries = async (token) => {
+    setQueriesLoading(true);
+    try {
+      const res = await fetch("/api/admin/queries", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        const list = Object.entries(resData.data)
+          .map(([id, details]) => ({ id, ...details }))
+          .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+        setQueriesList(list);
+      } else {
+        setQueriesList([]);
+      }
+    } catch (err) {
+      console.error("Failed to load queries:", err);
+      setQueriesList([]);
+    } finally {
+      setQueriesLoading(false);
+    }
+  };
+
+  const handleExportQueries = () => {
+    if (queriesList.length === 0) return;
+    const headers = ["Date", "Name", "Email", "Subject", "Message"];
+    const csvContent = [
+      headers.join(","),
+      ...queriesList.map((q) => {
+        const date = q.timestamp ? new Date(q.timestamp).toLocaleDateString() : "N/A";
+        return `"${date}","${(q.name || "").replace(/"/g, '""')}","${(q.email || "").replace(/"/g, '""')}","${(q.subject || "").replace(/"/g, '""')}","${(q.message || "").replace(/"/g, '""')}"`;
+      }),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "queries.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDeleteQuery = async (queryId) => {
+    if (!window.confirm("Are you sure you want to delete this query?")) return;
+    try {
+      const res = await fetch("/api/admin/queries", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ id: queryId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setQueriesList((prev) => prev.filter((q) => q.id !== queryId));
+      } else {
+        alert("Failed to delete query.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting query.");
     }
   };
 
   useEffect(() => {
     if (isAdmin && idToken && activeTab === "users") {
       loadUsers(idToken);
+    } else if (isAdmin && idToken && activeTab === "queries") {
+      loadQueries(idToken);
     }
   }, [isAdmin, activeTab, idToken]);
 
@@ -496,6 +572,13 @@ export default function AdminPage() {
           Users
         </button>
         <button
+          className={`admin-sidebar__btn ${activeTab === "queries" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("queries")}
+        >
+          <MessageSquare size={14} />
+          Queries
+        </button>
+        <button
           className={`admin-sidebar__btn ${activeTab === "add" ? "is-active" : ""}`}
           onClick={startAddNew}
         >
@@ -559,7 +642,9 @@ export default function AdminPage() {
         {activeTab === "users" && (
           <section>
             <h1 className="admin-title">Users</h1>
-            {usersList.length === 0 ? (
+            {usersLoading ? (
+              <p className="admin-muted">Loading...</p>
+            ) : usersList.length === 0 ? (
               <p className="admin-muted">No users found.</p>
             ) : (
               <div style={{ overflowX: "auto" }}>
@@ -581,6 +666,76 @@ export default function AdminPage() {
                         </td>
                         <td style={{ padding: "12px 16px", color: "#374151" }}>{u.email || "N/A"}</td>
                         <td style={{ padding: "12px 16px", color: "#374151" }}>{u.mobileNumber || "N/A"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === "queries" && (
+          <section>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+              <h1 className="admin-title" style={{ marginBottom: 0 }}>Customer Queries</h1>
+              <button
+                onClick={handleExportQueries}
+                disabled={queriesList.length === 0}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 16px",
+                  background: queriesList.length === 0 ? "#ccc" : "#111",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: queriesList.length === 0 ? "not-allowed" : "pointer",
+                  fontSize: "14px",
+                  fontFamily: "'Google Sans Flex', sans-serif"
+                }}
+              >
+                <Download size={14} />
+                Export CSV
+              </button>
+            </div>
+            {queriesLoading ? (
+              <p className="admin-muted">Loading...</p>
+            ) : queriesList.length === 0 ? (
+              <p className="admin-muted">No queries found.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "8px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+                  <thead>
+                    <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Date</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Name</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Email</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Subject</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Message</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", width: "60px", textAlign: "center" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {queriesList.map((q, i) => (
+                      <tr key={q.id} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: i % 2 === 0 ? "white" : "#fcfcfc", verticalAlign: "top" }}>
+                        <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "14px", whiteSpace: "nowrap" }}>
+                          {q.timestamp ? new Date(q.timestamp).toLocaleDateString() : "N/A"}
+                        </td>
+                        <td style={{ padding: "12px 16px", color: "#111827", fontWeight: "500" }}>{q.name}</td>
+                        <td style={{ padding: "12px 16px", color: "#374151" }}>{q.email}</td>
+                        <td style={{ padding: "12px 16px", color: "#374151", fontWeight: "500" }}>{q.subject}</td>
+                        <td style={{ padding: "12px 16px", color: "#4b5563", fontSize: "14px", minWidth: "300px" }}>{q.message}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                          <button
+                            onClick={() => handleDeleteQuery(q.id)}
+                            style={{ background: "transparent", border: "none", cursor: "pointer", color: "#ef4444" }}
+                            title="Delete Query"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

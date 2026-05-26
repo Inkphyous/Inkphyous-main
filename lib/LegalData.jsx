@@ -730,16 +730,14 @@ export const getLegalContent = (language, t) => {
         title: "Introduction",
         content: (
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
-            <div className="text-sm text-gray-500 mb-4">
-              <div className="flex flex-col sm:flex-row justify-between w-full gap-4 sm:gap-0">
-                <div className="space-y-2 text-left">
-                  <p className="font-semibold">Effective Date</p>
-                  <p className="font-semibold">Last Updated</p>
-                </div>
-                <div className="text-left space-y-2 text-gray-600">
-                  <p>25/05/2026</p>
-                  <p>25/05/2026</p>
-                </div>
+            <div className="text-sm text-gray-500 mb-4 flex flex-col space-y-2">
+              <div className="flex gap-4 sm:gap-8">
+                <p className="font-semibold min-w-[120px]">Effective Date</p>
+                <p className="text-gray-600">25/05/2026</p>
+              </div>
+              <div className="flex gap-4 sm:gap-8">
+                <p className="font-semibold min-w-[120px]">Last Updated</p>
+                <p className="text-gray-600">25/05/2026</p>
               </div>
             </div>
             <p>Inkphyous values your privacy and is committed to protecting your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website, <a href="https://www.inkphyous.com" className="text-rose-600 hover:underline">www.inkphyous.com</a> ("Website").</p>

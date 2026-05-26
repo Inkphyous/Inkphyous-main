@@ -143,6 +143,7 @@ export default function Header() {
           ) : (
             <Link href="/login" className="header__login-pill" aria-label="Login">
               <User size={15} strokeWidth={2.5} />
+              <span>{t("login")}</span>
             </Link>
           )}
 
@@ -300,7 +301,7 @@ export default function Header() {
               {/* Sliding grey background indicator */}
               <motion.div
                 className="view-toggle__indicator"
-                animate={{ x: viewMode === "grid" ? 0 : 44 }}
+                animate={{ x: viewMode === "grid" ? 0 : 38 }}
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
               <button

@@ -36,24 +36,31 @@ export default function Legal() {
         <span>{t('back')}</span>
       </button>
 
-      <div className="w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-[49%_52%]">
-        <div className="w-full flex justify-center md:items-center p-6 sm:p-8">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl title font-bold text-gray-900 tracking-tight text-center">
+      <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center min-h-[60vh] gap-12 md:gap-24">
+        {/* Left Side */}
+        <div className="flex-1 flex justify-center md:justify-end">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl title font-bold text-gray-900 tracking-tight">
             {t('legalities')}
           </h1>
         </div>
 
-        <div className="w-full flex flex-col items-center justify-center space-y-4 sm:space-y-8 lg:space-y-12 p-6 sm:p-8 border-t md:border-t-0 md:border-l border-red-500">
-          <button onClick={() => setActivePage('privacy')} className="block text-xl sm:text-2xl font-semibold text-gray-700 hover:text-red-500 cursor-pointer transition-colors duration-300 text-center" style={{ fontFamily: "'Google Sans Flex', sans-serif" }}>
+        {/* Center Line */}
+        <div className="hidden md:block w-px h-[300px] bg-[#e11d48]" />
+        {/* Mobile Horizontal Line */}
+        <div className="block md:hidden w-32 h-px bg-[#e11d48] my-4" />
+
+        {/* Right Side */}
+        <div className="flex-1 flex flex-col items-center md:items-start justify-center">
+          <button onClick={() => setActivePage('privacy')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
             {t('privacyPolicy')}
           </button>
-          <button onClick={() => setActivePage('terms')} className="block text-xl sm:text-2xl font-semibold text-gray-700 hover:text-red-500 cursor-pointer transition-colors duration-300 text-center" style={{ fontFamily: "'Google Sans Flex', sans-serif" }}>
+          <button onClick={() => setActivePage('terms')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
             {t('termsConditions')}
           </button>
-          <button onClick={() => setActivePage('shipping')} className="block text-xl sm:text-2xl font-semibold text-gray-700 hover:text-red-500 cursor-pointer transition-colors duration-300 text-center" style={{ fontFamily: "'Google Sans Flex', sans-serif" }}>
+          <button onClick={() => setActivePage('shipping')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
             {t('shippingPolicy')}
           </button>
-          <button onClick={() => setActivePage('returns')} className="block text-xl sm:text-2xl font-semibold text-gray-700 hover:text-red-500 cursor-pointer transition-colors duration-300 text-center" style={{ fontFamily: "'Google Sans Flex', sans-serif" }}>
+          <button onClick={() => setActivePage('returns')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
             {t('returnExchangePolicy')}
           </button>
         </div>
@@ -62,7 +69,7 @@ export default function Legal() {
   );
 
   const renderPolicyPage = (title, content) => (
-    <div className="min-h-screen bg-transparent px-4 sm:px-6 md:px-8 relative" style={{ paddingTop: '120px', paddingBottom: '100px' }}>
+    <div className="min-h-screen bg-transparent relative" style={{ paddingTop: '140px', paddingBottom: '100px' }}>
       <div className="fixed inset-0 -z-20">
         <div
           className="absolute inset-0"
@@ -80,25 +87,29 @@ export default function Legal() {
         <span>{t('back')}</span>
       </button>
 
-      <div className="w-full sm:w-[95%] lg:w-[90%] mx-auto" style={{ fontFamily: "'Google Sans Flex', sans-serif" }}>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 text-center" style={{ marginBottom: '40px' }}>
+      <div className="w-full max-w-6xl mx-auto" style={{ fontFamily: "'Google Sans Flex', sans-serif", paddingLeft: '15%', paddingRight: '15%' }}>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-center" style={{ marginBottom: '80px' }}>
           {title}
         </h1>
 
-        <div className="space-y-14 sm:space-y-28">
+        <div>
           {content.sections.map((section, idx) => (
-            <div key={idx} id={`section-${idx}`} className="flex flex-col lg:grid lg:grid-cols-[22%_1px_1fr] gap-6 lg:gap-x-12 items-start pt-4 sm:pt-6 mb-10 sm:mb-16">
-              <div className="w-full lg:pr-4">
-                <a href={`#section-${idx}`} className="block text-left text-base sm:text-lg font-bold text-gray-900 leading-snug hover:text-rose-600 transition">
+            <div key={idx} id={`section-${idx}`} className="flex flex-col md:flex-row items-stretch" style={{ marginBottom: '48px' }}>
+              {/* Left Column (Topics) */}
+              <div className="w-full md:w-48 lg:w-56 flex-shrink-0 mb-6 md:mb-0">
+                <a href={`#section-${idx}`} className="text-lg md:text-xl font-bold text-gray-900 hover:text-[#e11d48] transition-colors block" style={{ paddingTop: "4px" }}>
                   {section.title}
                 </a>
               </div>
-              <div className="w-full lg:w-px h-px lg:h-auto lg:self-stretch">
-                <div className="w-full lg:w-px h-px lg:h-full bg-red-500" />
-              </div>
-              <div className="w-full text-left">
-                <div className="text-gray-700 text-sm sm:text-base leading-relaxed space-y-8">
-                  <div className="[&_ul]:ml-5 sm:[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:text-left [&_ol]:ml-5 sm:[&_ol]:ml-6 [&_ol]:text-left [&_li]:pl-1 [&_li]:mb-4">
+              
+              {/* Center Red Line */}
+              <div className="hidden md:block flex-shrink-0" style={{ width: '1.5px', backgroundColor: '#e11d48', marginLeft: '12px', marginRight: '32px' }} />
+              <div className="block md:hidden h-px w-16 bg-[#e11d48] my-6" />
+
+              {/* Right Column (Content) */}
+              <div className="flex-1 min-w-0">
+                <div className="text-gray-800 text-sm md:text-base leading-relaxed">
+                  <div className="[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-4 [&_li]:pl-2 [&_h4]:font-bold [&_h4]:text-lg [&_h4]:mb-4 [&_h4]:mt-8 space-y-8">
                     {section.content}
                   </div>
                 </div>

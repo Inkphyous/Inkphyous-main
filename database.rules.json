@@ -9,6 +9,12 @@
       "$uid": {
         ".write": "$uid === auth.uid"
       }
+    },
+    "queries": {
+      ".read": "auth != null",
+      "$queryId": {
+        ".write": "!data.exists()"
+      }
     }
   }
 }

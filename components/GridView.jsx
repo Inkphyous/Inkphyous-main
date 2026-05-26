@@ -48,22 +48,27 @@ export default function GridView() {
                   loading="lazy"
                   decoding="async"
                 />
-              </div>
-
-              <div className="grid-view__info">
-                <div className="grid-view__info-left">
+                <div className="grid-view__image-overlay">
                   <span className="grid-view__brand">{product.brand}</span>
-                  <span className="grid-view__name">
-                    {language === "ar" && product.nameAr ? product.nameAr : product.summary.split("|")[0].trim()}
+                  <span className="grid-view__price">
+                    ₹{product.discountPriceINR || product.priceINR}
                   </span>
                 </div>
-                <span className="grid-view__price">
-                  ₹{product.discountPriceINR || product.priceINR}
-                </span>
               </div>
 
-              {/* Color dots */}
-              <div style={{ display: "flex", gap: "6px", paddingTop: "4px" }}>
+              <div className="grid-view__details-card">
+                <div className="grid-view__mobile-brand-price">
+                  <span className="grid-view__brand">{product.brand}</span>
+                  <span className="grid-view__price">
+                    ₹{product.discountPriceINR || product.priceINR}
+                  </span>
+                </div>
+                <span className="grid-view__name">
+                  {language === "ar" && product.nameAr ? product.nameAr : product.summary.split("|")[0].trim()}
+                </span>
+                
+                {/* Color dots */}
+                <div style={{ display: "flex", gap: "6px", paddingTop: "8px" }}>
                 {product.availableColors.map((color, idx) => {
                   const matchedVariant = (product.variants || []).find(
                     (variant) =>
@@ -93,6 +98,7 @@ export default function GridView() {
                     />
                   );
                 })}
+                </div>
               </div>
             </motion.div>
           );
