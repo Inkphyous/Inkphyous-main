@@ -40,6 +40,7 @@ export default function Header() {
   const menuRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [pdpScrolled, setPdpScrolled] = useState(false);
 
   const cartItemCount = cartItems?.reduce((acc, item) => acc + (item.quantity || 1), 0) || 0;
 
@@ -70,9 +71,15 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const onPdpScroll = (e) => setPdpScrolled(e.detail);
+    window.addEventListener("pdp-scroll", onPdpScroll);
+    return () => window.removeEventListener("pdp-scroll", onPdpScroll);
+  }, []);
+
   return (
     <>
-      <header className={`header${scrolled ? " header--scrolled" : ""}`}>
+      <header className={`header${scrolled || pdpScrolled ? " header--scrolled" : ""}`}>
         {/* Inkphyous text logo — far left */}
         <Link
           href="/"

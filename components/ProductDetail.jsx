@@ -130,6 +130,8 @@ export default function ProductDetail() {
     if (!el) return;
     const scrollTop = el.scrollTop;
     const progress = Math.max(0, Math.min(scrollTop / 400, 1));
+    
+    window.dispatchEvent(new CustomEvent("pdp-scroll", { detail: scrollTop > 10 }));
 
     const carouselEl = document.getElementById("carousel-element");
     if (carouselEl) {
