@@ -39,6 +39,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const cartItemCount = cartItems?.reduce((acc, item) => acc + (item.quantity || 1), 0) || 0;
 
@@ -62,9 +63,16 @@ export default function Header() {
     return () => window.removeEventListener("resize", updateMobile);
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <>
-      <header className="header">
+      <header className={`header${scrolled ? " header--scrolled" : ""}`}>
         {/* Inkphyous text logo — far left */}
         <Link
           href="/"

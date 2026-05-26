@@ -110,22 +110,6 @@ export default function ProductDetail() {
     return (product.sizeOptions || []).map((size) => ({ size, inStock: true }));
   }, [product, variant]);
 
-  const pdpCategoryProducts = useMemo(() => {
-    if (!product?.category) return [];
-    return products.filter((entry) => entry.category === product.category);
-  }, [products, product]);
-
-  const pdpNeighbors = useMemo(() => {
-    if (!product || pdpCategoryProducts.length === 0) {
-      return { left: null, right: null };
-    }
-    const centerIdx = pdpCategoryProducts.findIndex((entry) => entry.id === product.id);
-    if (centerIdx === -1) return { left: null, right: null };
-    const len = pdpCategoryProducts.length;
-    const left = len > 1 ? pdpCategoryProducts[(centerIdx - 1 + len) % len] : null;
-    const right = len > 1 ? pdpCategoryProducts[(centerIdx + 1) % len] : null;
-    return { left, right };
-  }, [pdpCategoryProducts, product]);
 
   useEffect(() => {
     setSelectedSize("");
@@ -277,11 +261,11 @@ export default function ProductDetail() {
     if (!swipeRef.current.active) return;
     const { dx, dy } = swipeRef.current;
     swipeRef.current.active = false;
-    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) || Math.abs(dy) > 40) return;
-    const target = dx < 0 ? pdpNeighbors.right : pdpNeighbors.left;
-    if (!target) return;
-    setPdpCategoryVacantLeft(false);
-    switchPdpProduct(target.id);
+    
+    // Extremely forgiving swipe threshold for mobile thumb arcs
+    if (Math.abs(dx) < 20) return;
+    
+    window.dispatchEvent(new CustomEvent('pdp-swipe', { detail: { dir: dx < 0 ? 'next' : 'prev' } }));
   };
 
   if (viewMode !== "pdp" || !product || !variant) return null;
@@ -318,7 +302,22 @@ export default function ProductDetail() {
         exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 100, damping: 20, mass: 0.8 }}
       >
-        <div className="pdp-overlay__spacer" />
+        <div 
+          className="pdp-overlay__spacer" 
+          style={{ pointerEvents: 'auto', touchAction: 'pan-y' }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onClick={(e) => {
+            const { clientX } = e;
+            const width = window.innerWidth;
+            if (clientX < width * 0.3) {
+              window.dispatchEvent(new CustomEvent('pdp-swipe', { detail: { dir: 'prev' } }));
+            } else if (clientX > width * 0.7) {
+              window.dispatchEvent(new CustomEvent('pdp-swipe', { detail: { dir: 'next' } }));
+            }
+          }}
+        />
 
         <div className="pdp-overlay__content">
           <MobilePDP
@@ -397,6 +396,22 @@ export default function ProductDetail() {
     );
   }
 
+  // Spacer click handler to simulate clicking left/right carousel items
+  const handleSpacerClick = (e) => {
+    const { clientX } = e;
+    const width = window.innerWidth;
+    
+    // Left 30% of screen = click left item
+    if (clientX < width * 0.3) {
+      window.dispatchEvent(new CustomEvent('pdp-swipe', { detail: { dir: 'prev' } }));
+    }
+    // Right 30% of screen = click right item
+    else if (clientX > width * 0.7) {
+      window.dispatchEvent(new CustomEvent('pdp-swipe', { detail: { dir: 'next' } }));
+    }
+    // Center = do nothing (center item doesn't rotate)
+  };
+
   return (
     <motion.div
       ref={overlayRef}
@@ -413,9 +428,6 @@ export default function ProductDetail() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3, duration: 0.4 }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <div className="pdp-overlay__grid">
           <div className="pdp-overlay__gallery">
@@ -529,12 +541,12 @@ export default function ProductDetail() {
                     </motion.button>
                   </div>
 
-                  <AnimatePresence mode="wait">
-                    <motion.p key={`desc-${product.id}`} className="pdp-overlay__description"
-                      initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ duration: 0.25 }}>
-                      {language === "ar" && product.descriptionAr ? product.descriptionAr : product.description}
-                    </motion.p>
-                  </AnimatePresence>
+                    <AnimatePresence mode="wait">
+                      <motion.div key={`desc-${product.id}`} className="pdp-overlay__description"
+                        initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ duration: 0.25 }}
+                        dangerouslySetInnerHTML={{ __html: language === "ar" && product.descriptionAr ? product.descriptionAr : product.description }}
+                      />
+                    </AnimatePresence>
 
                   <div className="pdp-overlay__mobile-previews hide-scrollbar"
                     onTouchStart={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}

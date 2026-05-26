@@ -13,8 +13,10 @@ export default function Carousel() {
     getImageByColorIndex,
     openPDP,
     pdpProductId,
+    pdpVariantId,
     pdpCategoryVacantLeft,
     setPdpCategoryVacantLeft,
+    setPdpVariantId,
     switchPdpProduct,
     viewMode,
     t,
@@ -24,6 +26,7 @@ export default function Carousel() {
   const autoPlayRef = useRef(null);
   const isPDP = viewMode === "pdp";
   const [transitioning, setTransitioning] = useState(false);
+  const [pdpOffset, setPdpOffset] = useState(0);
   const prevIndexRef = useRef(activeIndex);
   const directionRef = useRef(1); // 1 = next (up), -1 = prev (down)
   const touchRef = useRef({ active: false, startX: 0, startY: 0, dx: 0, dy: 0 });
@@ -111,23 +114,16 @@ export default function Carousel() {
 
   if (!activeProduct) return null;
 
-  const pdpCategoryProducts = useMemo(() => {
-    if (!pdpCenterProduct?.category) return [];
-    return products.filter((product) => product.category === pdpCenterProduct.category);
-  }, [products, pdpCenterProduct]);
+  useEffect(() => {
+    if (!isPDP) setPdpOffset(0);
+  }, [isPDP]);
 
-  const pdpNeighbors = useMemo(() => {
-    if (!isPDP || !pdpCenterProduct || pdpCategoryProducts.length === 0) {
-      return { left: null, right: null, center: pdpCenterProduct };
-    }
-    const centerIdx = pdpCategoryProducts.findIndex((product) => product.id === pdpCenterProduct.id);
-    if (centerIdx === -1) return { left: null, right: null, center: pdpCenterProduct };
+  const variants = pdpCenterProduct?.variants || [];
+  const vLen = variants.length;
+  const currentVariantIdx = variants.findIndex(v => v.id === (pdpVariantId || variants[0]?.id));
+  const safeVariantIdx = currentVariantIdx === -1 ? 0 : currentVariantIdx;
 
-    const len = pdpCategoryProducts.length;
-    const left = len > 1 ? pdpCategoryProducts[(centerIdx - 1 + len) % len] : null;
-    const right = len > 1 ? pdpCategoryProducts[(centerIdx + 1) % len] : null;
-    return { left, right, center: pdpCenterProduct };
-  }, [isPDP, pdpCenterProduct, pdpCategoryProducts]);
+  const isJerseyPDP = isPDP && String(pdpCenterProduct?.category || "").toLowerCase().includes("jersey");
 
   const swipeToNeighbor = useCallback(
     (dir) => {
@@ -136,13 +132,40 @@ export default function Carousel() {
         if (dir === "prev") prevProduct();
         return;
       }
-      const target = dir === "next" ? pdpNeighbors.right : pdpNeighbors.left;
-      if (!target) return;
+      
+      // If product has no variants to cycle, fallback to scrolling to the next product
+      if (vLen <= 1) {
+        if (dir === "next") {
+          const nextIndex = (activeIndex + 1) % products.length;
+          openPDP(nextIndex);
+        } else {
+          const prevIndex = (activeIndex - 1 + products.length) % products.length;
+          openPDP(prevIndex);
+        }
+        return;
+      }
+
+      let nextIdx;
+      if (dir === "next") { // swipe left -> right item moves to center
+        if (safeVariantIdx >= vLen - 1) return;
+        nextIdx = safeVariantIdx + 1;
+        setPdpOffset((prev) => prev + 1);
+      } else { // swipe right -> left item moves to center
+        if (safeVariantIdx <= 0) return;
+        nextIdx = safeVariantIdx - 1;
+        setPdpOffset((prev) => prev - 1);
+      }
       setPdpCategoryVacantLeft(false);
-      switchPdpProduct(target.id);
+      setPdpVariantId(variants[nextIdx].id);
     },
-    [isPDP, nextProduct, prevProduct, pdpNeighbors.left, pdpNeighbors.right, setPdpCategoryVacantLeft, switchPdpProduct]
+    [isPDP, nextProduct, prevProduct, vLen, safeVariantIdx, variants, setPdpCategoryVacantLeft, setPdpVariantId, activeIndex, products.length, openPDP]
   );
+
+  useEffect(() => {
+    const handleSwipe = (e) => swipeToNeighbor(e.detail.dir);
+    window.addEventListener('pdp-swipe', handleSwipe);
+    return () => window.removeEventListener('pdp-swipe', handleSwipe);
+  }, [swipeToNeighbor]);
 
   const handleTouchStart = (event) => {
     const touch = event.touches[0];
@@ -168,33 +191,48 @@ export default function Carousel() {
     if (!touchRef.current.active) return;
     const { dx, dy } = touchRef.current;
     touchRef.current.active = false;
-    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) || Math.abs(dy) > 40) return;
+    
+    // Extremely forgiving swipe threshold for mobile thumb arcs
+    if (Math.abs(dx) < 20) return;
+    
     swipeToNeighbor(dx < 0 ? "next" : "prev");
   };
 
-  const getSlot = (i) => {
-    if (isPDP && pdpCenterProduct) {
-      const current = products[i];
-      if (!current || current.category !== pdpCenterProduct.category) return "hidden";
-      if (current.id === pdpNeighbors.center?.id) return "center";
-      if (current.id === pdpNeighbors.right?.id) return "right";
-      if (
-        !pdpCategoryVacantLeft &&
-        current.id === pdpNeighbors.left?.id &&
-        current.id !== pdpNeighbors.right?.id
-      ) {
-        return "left";
+  const renderItems = useMemo(() => {
+    let items = [...products];
+    if (isPDP) {
+      const needed = Math.max(3, vLen) - items.length;
+      if (needed > 0) {
+        for (let i = 0; i < needed; i++) {
+          items.push({ id: `fake-${i}`, isFake: true });
+        }
       }
+    }
+    return items;
+  }, [products, isPDP, vLen]);
+
+  const getSlot = (i) => {
+    const len = renderItems.length;
+    let delta = (i - activeIndex + len) % len;
+    if (delta > len / 2) delta -= len;
+
+    if (isPDP && pdpCenterProduct) {
+      let offsetDelta = (delta - pdpOffset) % len;
+      if (offsetDelta > len / 2) offsetDelta -= len;
+      if (offsetDelta < -len / 2) offsetDelta += len;
+
+      const rawTargetIdx = safeVariantIdx + offsetDelta;
+
+      if (offsetDelta === 0) return "center";
+      if (offsetDelta === 1 && rawTargetIdx < vLen) return "right";
+      if (offsetDelta === -1 && rawTargetIdx >= 0 && !pdpCategoryVacantLeft) return "left";
       return "hidden";
     }
 
-    if (i === activeIndex) return "center";
-    const left = (activeIndex - 1 + products.length) % products.length;
-    const right = (activeIndex + 1) % products.length;
-    if (i === left) return "left";
-    if (i === right) return "right";
-    const diff = (i - activeIndex + products.length) % products.length;
-    return diff > products.length / 2 ? "behindLeft" : "behindRight";
+    if (delta === 0) return "center";
+    if (delta === -1) return "left";
+    if (delta === 1) return "right";
+    return delta < 0 ? "behindLeft" : "behindRight";
   };
 
   const slotStyles = {
@@ -248,39 +286,68 @@ export default function Carousel() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Stage — uses CSS class for PDP animation (not Framer Motion, 
-           because the PDP scroll handler needs to control transform directly) */}
-      <div
-        className={`carousel__stage ${isPDP ? "carousel__stage--pdp" : ""}`}
-      >
-        {products.map((product, i) => {
+      <div className={`carousel__stage ${isPDP ? "carousel__stage--pdp" : ""}`}>
+        <AnimatePresence>
+          {isJerseyPDP && (
+            <motion.div
+              className="carousel__jersey-bg"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <img src="/img/brand/jersey-bg.png" alt="" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {renderItems.map((product, i) => {
           const slot = getSlot(i);
+          
           const cIdx = colorMap[i] || 0;
-          const img = getImageByColorIndex(product, cIdx);
-          const style = slotStyles[slot];
-          const isCenter = i === activeIndex;
+          let finalImg = product.isFake ? "" : getImageByColorIndex(product, cIdx);
+          let finalAlt = product.name;
+
+          if (isPDP && pdpCenterProduct) {
+            const len = renderItems.length;
+            let delta = (i - activeIndex + len) % len;
+            if (delta > len / 2) delta -= len;
+            
+            let offsetDelta = (delta - pdpOffset) % len;
+            if (offsetDelta > len / 2) offsetDelta -= len;
+            if (offsetDelta < -len / 2) offsetDelta += len;
+
+            if (Math.abs(offsetDelta) <= 1 && vLen > 0) {
+              const rawTargetIdx = safeVariantIdx + offsetDelta;
+              if (rawTargetIdx >= 0 && rawTargetIdx < vLen) {
+                const targetVariant = variants[rawTargetIdx];
+                finalImg = targetVariant.mainImage || targetVariant.image;
+                finalAlt = targetVariant.name || pdpCenterProduct.name;
+              }
+            }
+          }
+
+          const isCenter = slot === "center";
           const isVisible = slot === "center" || slot === "left" || slot === "right";
-          const isJersey = String(product.category || "")
-            .toLowerCase()
-            .includes("jersey");
+          const isJersey = String(product.category || "").toLowerCase().includes("jersey");
 
           return (
             <motion.div
               key={product.id}
               className="carousel__item"
               animate={{
-                x: style.x,
-                y: style.y,
-                scale: style.scale,
-                opacity: style.opacity,
-                filter: style.filter,
+                x: slotStyles[slot].x,
+                y: slotStyles[slot].y,
+                scale: slotStyles[slot].scale,
+                opacity: slotStyles[slot].opacity,
+                filter: slotStyles[slot].filter,
               }}
               whileHover={
-                !isPDP && isVisible
-                  ? { scale: style.scale * 1.08, transition: { duration: 0.25 } }
+                isVisible
+                  ? { scale: slotStyles[slot].scale * 1.08, transition: { duration: 0.25 } }
                   : {}
               }
-              initial={{ scale: style.scale * 0.85, opacity: 0, x: style.x, y: style.y }}
+              initial={{ scale: slotStyles[slot].scale * 0.85, opacity: 0, x: slotStyles[slot].x, y: slotStyles[slot].y }}
               transition={{
                 type: "spring",
                 stiffness: 85,
@@ -288,15 +355,18 @@ export default function Carousel() {
                 mass: 0.9,
               }}
               style={{
-                zIndex: style?.zIndex || 0,
+                zIndex: slotStyles[slot]?.zIndex || 0,
                 cursor: isVisible ? "pointer" : "default",
               }}
               onClick={() => {
                 if (!isVisible) return;
                 if (isPDP) {
-                  if (slot === "left" || slot === "right") {
+                  if (slot === "left") {
                     setPdpCategoryVacantLeft(false);
-                    switchPdpProduct(product.id);
+                    swipeToNeighbor("prev");
+                  } else if (slot === "right") {
+                    setPdpCategoryVacantLeft(false);
+                    swipeToNeighbor("next");
                   }
                   return;
                 }
@@ -304,24 +374,31 @@ export default function Carousel() {
               }}
             >
               <div className="carousel__item-inner">
-                {slot !== "hidden" && (
-                  <img
-                    src={img}
-                    alt={product.name}
-                    loading="lazy"
-                    decoding="async"
-                    className={isCenter && !isPDP ? "float-breathing" : ""}
-                    style={{
-                      height: isJersey ? "62vh" : "48vh"
-                    }}
-                  />
-                )}
+                <AnimatePresence mode="popLayout">
+                  {slot !== "hidden" && finalImg && (
+                    <motion.img
+                      key={finalImg}
+                      src={finalImg}
+                      alt={finalAlt}
+                      loading="lazy"
+                      decoding="async"
+                      className={isCenter && !isPDP ? "float-breathing" : ""}
+                      style={{
+                        height: isJerseyPDP && isPDP ? "62vh" : isJersey && !isPDP ? "62vh" : "48vh",
+                        objectFit: "contain"
+                      }}
+                      initial={{ opacity: 0.3, filter: "blur(4px)" }}
+                      animate={{ opacity: 1, filter: "blur(0px)" }}
+                      exit={{ opacity: 0.3, filter: "blur(4px)" }}
+                      transition={{ duration: 0.3 }}
+                    />
+                  )}
+                </AnimatePresence>
                 <div className="carousel__shadow" />
               </div>
             </motion.div>
           );
         })}
-
       </div>
 
       {/* Info section — only visible when NOT in PDP */}

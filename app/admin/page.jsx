@@ -7,6 +7,7 @@ import { app as defaultApp } from "@/lib/firebase";
 import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download } from "lucide-react";
 import { ref, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
+
 const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 const COLOR_PALETTE = [
   { name: "Black", hex: "#111111" },
@@ -154,6 +155,68 @@ function groupProducts(catalog) {
     });
   }
   return grouped;
+}
+
+function ColorEditor({ value, onChange, colors }) {
+  const [refObj, setRefObj] = useState(null);
+
+  useEffect(() => {
+    if (refObj && value !== refObj.innerHTML) {
+      refObj.innerHTML = value;
+    }
+  }, [value, refObj]);
+
+  const applyColor = (hex) => {
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("foreColor", false, hex);
+    if (refObj) refObj.focus();
+    if (refObj) onChange(refObj.innerHTML);
+  };
+
+  const applyFormat = (command) => {
+    document.execCommand(command, false, null);
+    if (refObj) refObj.focus();
+    if (refObj) onChange(refObj.innerHTML);
+  };
+
+  return (
+    <div style={{ background: "white", color: "black", borderRadius: "8px", overflow: "hidden", border: "1px solid #ccc" }}>
+      <div style={{ padding: "8px", borderBottom: "1px solid #eee", display: "flex", gap: "6px", flexWrap: "wrap", background: "#f8f9fa", alignItems: "center" }}>
+         <button
+           type="button"
+           onClick={(e) => { e.preventDefault(); applyFormat("bold"); }}
+           style={{ width: "24px", height: "24px", background: "#fff", border: "1px solid #d1d5db", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", padding: 0 }}
+           title="Bold"
+         >
+           B
+         </button>
+         <button
+           type="button"
+           onClick={(e) => { e.preventDefault(); applyFormat("italic"); }}
+           style={{ width: "24px", height: "24px", background: "#fff", border: "1px solid #d1d5db", borderRadius: "4px", cursor: "pointer", fontStyle: "italic", padding: 0 }}
+           title="Italic"
+         >
+           I
+         </button>
+         <div style={{ width: "1px", height: "16px", background: "#ccc", margin: "0 4px" }} />
+         {colors.map(c => (
+           <button 
+             key={c.hex} 
+             type="button" 
+             onClick={(e) => { e.preventDefault(); applyColor(c.hex); }}
+             style={{ width: "24px", height: "24px", background: c.hex, border: "1px solid #d1d5db", borderRadius: "50%", cursor: "pointer", padding: 0 }}
+             title={c.name}
+           />
+         ))}
+      </div>
+      <div 
+        ref={setRefObj}
+        contentEditable
+        onInput={(e) => onChange(e.currentTarget.innerHTML)}
+        style={{ padding: "12px", minHeight: "120px", outline: "none", fontSize: "14px", fontFamily: "inherit", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+      />
+    </div>
+  );
 }
 
 export default function AdminPage() {
@@ -752,6 +815,7 @@ export default function AdminPage() {
               <label>
                 Category
                 <select
+                  className="admin-light-select"
                   value={isNewCategory ? "+ Add New Category" : draft.category.name}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -763,16 +827,17 @@ export default function AdminPage() {
                       setDraft((prev) => ({ ...prev, category: { ...prev.category, name: val } }));
                     }
                   }}
-                  style={{ marginBottom: isNewCategory ? "0.5rem" : "0", backgroundColor: "#1e1e1e", color: "#fff" }}
+                  style={{ marginBottom: isNewCategory ? "0.5rem" : "0" }}
                 >
-                  <option value="" disabled style={{ backgroundColor: "#1e1e1e", color: "#fff" }}>Select Category</option>
+                  <option value="" disabled>Select Category</option>
                   {categories.filter(c => c && c !== "Uncategorized").map((cat) => (
-                    <option key={cat} value={cat} style={{ backgroundColor: "#1e1e1e", color: "#fff" }}>{cat}</option>
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
-                  <option value="+ Add New Category" style={{ backgroundColor: "#1e1e1e", color: "#fff" }}>+ Add New Category</option>
+                  <option value="+ Add New Category">+ Add New Category</option>
                 </select>
                 {isNewCategory && (
                   <input
+                    className="admin-light-input"
                     value={draft.category.name}
                     onChange={(e) =>
                       setDraft((prev) => ({ ...prev, category: { ...prev.category, name: e.target.value } }))
@@ -782,8 +847,20 @@ export default function AdminPage() {
                 )}
               </label>
               <label>
+                Brand
+                <input
+                  className="admin-light-input"
+                  value={draft.product.brand}
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, product: { ...prev.product, brand: e.target.value } }))
+                  }
+                  placeholder="Inkphyous"
+                />
+              </label>
+              <label>
                 Product Name
                 <input
+                  className="admin-light-input"
                   value={draft.product.name}
                   onChange={(e) =>
                     setDraft((prev) => ({ ...prev, product: { ...prev.product, name: e.target.value } }))
@@ -794,6 +871,7 @@ export default function AdminPage() {
               <label>
                 Price
                 <input
+                  className="admin-light-input"
                   value={draft.product.priceINR}
                   onChange={(e) =>
                     setDraft((prev) => ({ ...prev, product: { ...prev.product, priceINR: e.target.value } }))
@@ -804,6 +882,7 @@ export default function AdminPage() {
               <label>
                 Discount Price
                 <input
+                  className="admin-light-input"
                   value={draft.product.discountPriceINR}
                   onChange={(e) =>
                     setDraft((prev) => ({
@@ -816,17 +895,17 @@ export default function AdminPage() {
               </label>
             </div>
 
-            <label className="admin-textarea-label">
-              Description
-              <textarea
+            <label className="admin-textarea-label" style={{ display: "block", marginBottom: "1rem" }}>
+              <span style={{ display: "block", marginBottom: "0.5rem" }}>Description</span>
+              <ColorEditor
                 value={draft.product.description}
-                onChange={(e) =>
+                onChange={(content) =>
                   setDraft((prev) => ({
                     ...prev,
-                    product: { ...prev.product, description: e.target.value },
+                    product: { ...prev.product, description: content },
                   }))
                 }
-                rows={4}
+                colors={COLOR_PALETTE.concat([{ name: "Inkphyous Red", hex: "#e11d48" }])}
               />
             </label>
 
@@ -835,6 +914,7 @@ export default function AdminPage() {
                 <label key={key}>
                   {key}
                   <input
+                    className="admin-light-input"
                     value={draft.product.details?.[key] || ""}
                     onChange={(e) =>
                       setDraft((prev) => ({
@@ -933,7 +1013,18 @@ export default function AdminPage() {
                       />
                     </label>
                     <label>
-                      Color Hex
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        Color Hex
+                        <div 
+                          style={{ 
+                            width: "16px", 
+                            height: "16px", 
+                            borderRadius: "50%", 
+                            backgroundColor: variant.colorHex,
+                            border: "1px solid #333"
+                          }} 
+                        />
+                      </div>
                       <input
                         value={variant.colorHex}
                         onChange={(e) =>

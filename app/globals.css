@@ -86,9 +86,21 @@ img {
   align-items: center;
   justify-content: center;
   padding: 0 32px;
-  background: rgba(240, 239, 237, 0.2);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  /* Fully transparent at rest — blends into the page background */
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-bottom: none;
+  box-shadow: none;
+  transition: background 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease;
+}
+
+/* Frosted glass — activates only when the user has scrolled */
+.header--scrolled {
+  background: rgba(232, 232, 232, 0.55);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
 }
 
 /* Inkphyous text logo — far left, vertically centered */
@@ -618,6 +630,8 @@ img {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  /* Prevent browser from hijacking horizontal swipes for history navigation */
+  touch-action: pan-y;
   /* Products render below sidebar z-index so left product goes behind text */
   z-index: 40;
 }
@@ -655,6 +669,7 @@ img {
   align-items: center;
   justify-content: center;
   will-change: transform, opacity, filter;
+  touch-action: pan-y;
 }
 
 .carousel__item-inner {
@@ -783,6 +798,8 @@ img {
   scrollbar-width: none;
   -ms-overflow-style: none;
   pointer-events: none;
+  /* Prevent scroll container from hijacking horizontal swipes */
+  touch-action: pan-y;
   /* Let clicks pass through the empty spacer */
 }
 
@@ -803,6 +820,8 @@ img {
   padding: 32px 10vw 100px;
   min-height: 60vh;
   pointer-events: auto;
+  /* Prevent browser from hijacking horizontal swipes */
+  touch-action: pan-y;
   /* Catch clicks for actual content */
 }
 
@@ -1086,6 +1105,8 @@ img {
   color: #000;
   line-height: 1.8;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .pdp-overlay__mobile-previews {
@@ -2946,7 +2967,7 @@ body.lightbox-open .header__back-btn {
    ============================================================ */
 .admin-page {
   min-height: 100vh;
-  background: #0a0a0a;
+  background: #2a2a2c;
   color: #f8f8f8;
 }
 
@@ -2961,8 +2982,8 @@ body.lightbox-open .header__back-btn {
   top: 0;
   bottom: 0;
   width: 260px;
-  background: #111;
-  border-right: 1px solid #282828;
+  background: #1a1a1c;
+  border-right: 1px solid #3a3a3c;
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
@@ -3110,6 +3131,29 @@ body.lightbox-open .header__back-btn {
   color: #fff;
   border-radius: 8px;
   padding: 10px;
+}
+
+.admin-light-input,
+.admin-light-select {
+  border: 1px solid #ccc !important;
+  background: #fff !important;
+  color: #000 !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.admin-light-input:focus,
+.admin-light-select:focus {
+  border-color: #888 !important;
+}
+
+.admin-light-select {
+  cursor: pointer;
+  appearance: auto;
 }
 
 .admin-textarea-label {
