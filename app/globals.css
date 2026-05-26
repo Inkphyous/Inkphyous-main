@@ -98,16 +98,11 @@ img {
 
 /* Frosted glass — activates only when the user has scrolled */
 .header--scrolled {
-  background: rgba(232, 232, 232, 0.95); /* Fallback for browsers/builds where backdrop-filter is stripped */
+  background: rgba(232, 232, 232, 0.55);
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(10px) !important;
 }
 
-@supports (backdrop-filter: blur(18px)) or (-webkit-backdrop-filter: blur(18px)) {
-  .header--scrolled {
-    background: rgba(232, 232, 232, 0.55);
-    backdrop-filter: blur(18px) saturate(1.2);
-    -webkit-backdrop-filter: blur(18px) saturate(1.2);
-  }
-}
 
 /* Inkphyous text logo — far left, vertically centered */
 .header__logo-left {
