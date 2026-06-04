@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/legal/(.*)", "destination": "/legal" },
+    { "source": "/legaldata/(.*)", "destination": "/legal" },
     { "source": "/((?!api|static|.*\\..*).*)$", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
