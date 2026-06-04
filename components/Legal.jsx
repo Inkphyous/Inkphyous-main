@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useStore } from './providers/StoreProvider';
 import { getLegalContent } from '@/lib/LegalData';
@@ -9,13 +9,25 @@ import { getLegalContent } from '@/lib/LegalData';
 export default function Legal() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { t, language } = useStore();
-  const initialTab = searchParams.get('tab') || 'home';
+  
+  const pathParts = pathname.split('/').filter(Boolean);
+  const slugFromPath = pathParts.length > 1 ? pathParts[1] : null;
+  const initialTab = slugFromPath || searchParams.get('tab') || 'home';
+  
   const [activePage, setActivePage] = useState(initialTab);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [activePage]);
+    
+    const basePath = pathParts[0] || 'legal';
+    const newUrl = activePage === 'home' ? `/${basePath}` : `/${basePath}/${activePage}`;
+    
+    if (pathname !== newUrl) {
+      window.history.pushState(null, '', newUrl);
+    }
+  }, [activePage, pathname, pathParts]);
 
   const renderHome = () => (
     <div className="min-h-screen flex items-center justify-center bg-transparent px-4 relative">
