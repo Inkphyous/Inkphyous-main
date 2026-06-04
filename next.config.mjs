@@ -7,6 +7,18 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/legal/:path*',
+        destination: '/legal',
+      },
+      {
+        source: '/legaldata/:path*',
+        destination: '/legal',
+      },
+    ];
+  },
 };
 
 export default nextConfig;
