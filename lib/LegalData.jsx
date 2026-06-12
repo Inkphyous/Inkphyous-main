@@ -537,7 +537,7 @@ export const getLegalContent = (language, t) => {
             <p>Once your request has been reviewed and approved, our logistics partner will schedule a collection within <strong>24–48 hours</strong>, subject to service availability in your area. Pickups will be attempted up to <strong>two times</strong>.</p>
             <p>If our courier partner is unable to complete the collection, you may be required to <strong>return the shipment directly</strong> to our warehouse. Reverse pickup service is subject to availability based on your area's pincode coverage.</p>
             <p>Returned products undergo a mandatory <strong>Quality Check (QC)</strong> upon receipt. Products must be returned in <strong>unused, unwashed, and undamaged</strong> condition, with original packaging, brand tags, and all accompanying accessories intact.</p>
-            <p>If the requested size or item is unavailable, a <strong>gift card</strong> of equivalent value will be issued, redeemable for future online purchases.</p>
+            <p>If the requested size or item is unavailable, a <strong>Refund Points</strong> of equivalent value will be issued, redeemable for future online purchases.</p>
           </div>
         )
       },
@@ -547,7 +547,7 @@ export const getLegalContent = (language, t) => {
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
             <p><strong>Cash on Delivery (COD) Orders:</strong> May be cancelled only <strong>prior to dispatch</strong> from our warehouse.</p>
             <p><strong>Prepaid Orders:</strong> Are <strong>final and non-refundable</strong> once confirmed.</p>
-            <p>Refunds, where applicable, will be issued as <strong>gift cards</strong> valid for <strong>six (6) months</strong> from the date of issue. Shipping and handling charges are non-refundable.</p>
+            <p>Refunds, where applicable, will be issued as <strong>Refund Points</strong> valid for <strong>six (6) months</strong> from the date of issue. Shipping and handling charges are non-refundable.</p>
           </div>
         )
       },
