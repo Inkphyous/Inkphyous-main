@@ -31,7 +31,7 @@ export const getLegalContent = (language, t) => {
         title: "الشحن",
         content: (
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide text-right" dir="rtl">
-            <p><strong>الطلبات المحلية:</strong> توصيل قياسي مجاني في غضون <strong>3-5 أيام عمل</strong> بعد الإرسال.</p>
+            <p><strong>الطلبات المحلية:</strong> توصيل قياسي مجاني في غضون <strong>5-7 أيام عمل</strong> بعد الإرسال.</p>
             <p><strong>الطلبات الدولية:</strong> يتم شحنها عبر <strong>DHL/UPS أو ما يعادلها</strong>. الرسوم والضرائب والمصاريف تقع على عاتق العميل.</p>
             <p>أوقات التسليم هي تقديرات وتستثني فترات المعالجة. <strong>Inkphyous</strong> ليست مسؤولة عن التأخير بسبب الجمارك أو مشاكل البريد السريع.</p>
           </div>
@@ -89,7 +89,7 @@ export const getLegalContent = (language, t) => {
         title: "Shipping",
         content: (
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
-            <p><strong>Domestic Orders:</strong> Complimentary standard delivery within <strong>3–5 business days</strong> after dispatch.</p>
+            <p><strong>Domestic Orders:</strong> Complimentary standard delivery within <strong>5-7 business days</strong> after dispatch.</p>
             <p><strong>International Orders:</strong> Shipped via <strong>DHL/UPS or equivalent</strong>. Duties, taxes, and fees are the customer's responsibility.</p>
             <p>Delivery times are estimates and exclude processing periods. <strong>Inkphyous</strong> is not liable for delays due to customs or courier issues.</p>
           </div>
