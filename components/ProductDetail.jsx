@@ -296,16 +296,12 @@ export default function ProductDetail() {
 
       const footerEl = document.getElementById("global-footer");
       if (footerEl) {
-        const detailsEl = el.querySelector(".pdp-overlay__details-wrap");
-        if (detailsEl) {
-          const rect = detailsEl.getBoundingClientRect();
-          if (rect.top <= 1) {
-            footerEl.style.opacity = "1";
-            footerEl.style.visibility = "visible";
-          } else {
-            footerEl.style.opacity = "0";
-            footerEl.style.visibility = "hidden";
-          }
+        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
+          footerEl.style.opacity = "1";
+          footerEl.style.visibility = "visible";
+        } else {
+          footerEl.style.opacity = "0";
+          footerEl.style.visibility = "hidden";
         }
       }
     }
@@ -703,10 +699,6 @@ export default function ProductDetail() {
 
             </motion.div>
           </div>
-        </div>
-
-        <div className="pdp-overlay__mobile-footer" style={{ display: isMobile ? "block" : "none", marginTop: "40px" }}>
-          <Footer isInline />
         </div>
       </motion.div>
 

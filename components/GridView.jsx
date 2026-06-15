@@ -21,7 +21,7 @@ export default function GridView() {
     <div className="grid-view">
       <div className="grid-view__grid">
         {products.map((product, i) => {
-          const cIdx = colorMap[i] || 0;
+          const cIdx = colorMap[product.id] || 0;
           const img = getImageByColorIndex(product, cIdx);
 
           return (
@@ -80,7 +80,7 @@ export default function GridView() {
                       key={color}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setProductColor(i, idx);
+                        setProductColor(product.id, idx);
                       }}
                       style={{
                         width: "14px",

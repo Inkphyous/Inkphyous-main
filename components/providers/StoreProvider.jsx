@@ -56,7 +56,12 @@ export function StoreProvider({ children }) {
   const [pdpVariantId, setPdpVariantIdState] = useState(null);
   const [pdpCategoryVacantLeft, setPdpCategoryVacantLeft] = useState(false);
 
-  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeCategoryState, setActiveCategoryState] = useState("All");
+  const setActiveCategory = useCallback((cat) => {
+    setActiveCategoryState(cat);
+    setActiveIndex(0);
+  }, []);
+  const activeCategory = activeCategoryState;
 
   const [cartItems, setCartItems] = useState([]);
   const [lastAddedItem, setLastAddedItem] = useState(null);
@@ -95,8 +100,8 @@ export function StoreProvider({ children }) {
   }, [products, activeCategory]);
 
   useEffect(() => {
-    setActiveIndex(0);
-  }, [activeCategory]);
+    // setActiveIndex(0) is now handled synchronously in setActiveCategory
+  }, []);
 
   const activeProduct = filteredProducts[activeIndex] || filteredProducts[0] || null;
 
@@ -149,87 +154,77 @@ export function StoreProvider({ children }) {
       if (!product) return;
       const variant = (product.variants || []).find((v) => v.id === variantId);
       if (!variant) return;
-      const productIndex = getProductIndexById(product.id);
       const colorIndex = (product.availableColors || []).findIndex(
         (color) => String(color).toLowerCase() === String(variant.color).toLowerCase()
       );
-      if (productIndex !== -1 && colorIndex !== -1) {
-        setColorMap((prev) => ({ ...prev, [productIndex]: colorIndex }));
+      if (colorIndex !== -1) {
+        setColorMap((prev) => ({ ...prev, [product.id]: colorIndex }));
       }
     },
-    [getProductByVariantId, getProductIndexById]
+    [getProductByVariantId]
+  );
+
+  const openProductById = useCallback(
+    (productId, variantId = null, vacantLeft = true) => {
+      let fIdx = filteredProducts.findIndex((p) => p.id === productId);
+      if (fIdx === -1) {
+        setActiveCategoryState("All");
+        fIdx = products.findIndex((p) => p.id === productId);
+      }
+      if (fIdx === -1) return;
+
+      const product = products.find((p) => p.id === productId);
+      const colorIdx = colorMap[productId] || 0;
+      const colorName = product.availableColors?.[colorIdx];
+      let variant = variantId
+        ? (product.variants || []).find((v) => v.id === variantId)
+        : null;
+      if (!variant) {
+        variant =
+          (product.variants || []).find(
+            (v) => String(v.color).toLowerCase() === String(colorName).toLowerCase()
+          ) || product.variants?.[0];
+      }
+
+      setPrevViewMode(viewMode);
+      setActiveIndex(fIdx);
+      setPdpProductId(product.id);
+      setPdpVariantIdState(variant?.id || null);
+      setPdpCategoryVacantLeft(vacantLeft);
+      setViewMode("pdp");
+    },
+    [filteredProducts, products, colorMap, viewMode]
   );
 
   const openPDP = useCallback(
-    (productIndex) => {
-      const product = products[productIndex];
-      if (!product) return;
-
-      const colorIdx = colorMap[productIndex] || 0;
-      const colorName = product.availableColors?.[colorIdx];
-      const variant =
-        (product.variants || []).find(
-          (v) => String(v.color).toLowerCase() === String(colorName).toLowerCase()
-        ) || product.variants?.[0];
-
-      setPrevViewMode(viewMode);
-      setActiveIndex(productIndex);
-      setPdpProductId(product.id);
-      setPdpVariantIdState(variant?.id || null);
-      setPdpCategoryVacantLeft(true);
-      setViewMode("pdp");
+    (filteredIndex) => {
+      const product = filteredProducts[filteredIndex];
+      if (product) openProductById(product.id);
     },
-    [products, colorMap, viewMode]
+    [filteredProducts, openProductById]
   );
 
   const openPDPByVariantId = useCallback(
     (variantId) => {
       if (!variantId) return;
       const product = getProductByVariantId(variantId);
-      if (!product) return;
-      const productIndex = getProductIndexById(product.id);
-      if (productIndex === -1) return;
-      setActiveIndex(productIndex);
-      setPrevViewMode(viewMode);
-      setPdpProductId(product.id);
-      setPdpVariantIdState(variantId);
-      setPdpCategoryVacantLeft(true);
-      setViewMode("pdp");
+      if (product) openProductById(product.id, variantId);
     },
-    [getProductByVariantId, getProductIndexById, viewMode]
+    [getProductByVariantId, openProductById]
   );
 
   const openPDPByProductAndVariant = useCallback(
     ({ productId, variantId }) => {
-      if (variantId) {
-        openPDPByVariantId(variantId);
-        return;
-      }
-      const index = getProductIndexById(productId);
-      if (index !== -1) openPDP(index);
+      openProductById(productId, variantId);
     },
-    [getProductIndexById, openPDP, openPDPByVariantId]
+    [openProductById]
   );
 
   const switchPdpProduct = useCallback(
     (targetProductId) => {
-      const targetIndex = getProductIndexById(targetProductId);
-      if (targetIndex === -1) return;
-
-      const targetProduct = products[targetIndex];
-      const targetColorIdx = colorMap[targetIndex] || 0;
-      const targetColor = targetProduct.availableColors?.[targetColorIdx];
-      const targetVariant =
-        (targetProduct.variants || []).find(
-          (v) => String(v.color).toLowerCase() === String(targetColor).toLowerCase()
-        ) || targetProduct.variants?.[0];
-
-      setActiveIndex(targetIndex);
-      setPdpProductId(targetProduct.id);
-      setPdpVariantIdState(targetVariant?.id || null);
-      setPdpCategoryVacantLeft(false);
+      openProductById(targetProductId, null, false);
     },
-    [products, colorMap, getProductIndexById]
+    [openProductById]
   );
 
   const closePDP = useCallback(() => {
@@ -249,10 +244,10 @@ export function StoreProvider({ children }) {
     [viewMode]
   );
 
-  const setProductColor = useCallback((productIndex, colorIndex) => {
-    setColorMap((prev) => ({ ...prev, [productIndex]: colorIndex }));
+  const setProductColor = useCallback((productId, colorIndex) => {
+    setColorMap((prev) => ({ ...prev, [productId]: colorIndex }));
 
-    const product = products[productIndex];
+    const product = products.find((p) => p.id === productId);
     if (!product) return;
     const colorName = product.availableColors?.[colorIndex];
     const variant = (product.variants || []).find(

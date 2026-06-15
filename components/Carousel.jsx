@@ -232,8 +232,18 @@ export default function Carousel() {
 
   const carouselItems = useMemo(() => {
     if (isPDP && pdpCenterProduct && vLen > 0) {
-      return products.map((product, i) => {
-        const len = products.length;
+      const paddedProducts = [...products];
+      let virtualId = 1;
+      while (paddedProducts.length < 3) {
+        paddedProducts.push({
+          id: `virtual-pad-${virtualId++}`,
+          name: pdpCenterProduct.name,
+          isVirtual: true,
+        });
+      }
+
+      return paddedProducts.map((product, i) => {
+        const len = paddedProducts.length;
         let delta = ((i - displayActiveIndex) % len + len) % len;
         if (delta > len / 2) delta -= len;
 
@@ -281,7 +291,7 @@ export default function Carousel() {
     }
 
     return products.map((product, i) => {
-      const cIdx = colorMap[i] || 0;
+      const cIdx = colorMap[product.id] || 0;
       return {
         key: product.id,
         slot: getProductSlot(i),
