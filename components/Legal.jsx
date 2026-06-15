@@ -99,27 +99,27 @@ export default function Legal() {
         <span>{t('back')}</span>
       </button>
 
-      <div className="w-full max-w-6xl mx-auto" style={{ fontFamily: "'Google Sans Flex', sans-serif", paddingLeft: '15%', paddingRight: '15%' }}>
+      <div className="w-full mx-auto" style={{ fontFamily: "'Google Sans Flex', sans-serif", paddingLeft: '6%', paddingRight: '6%', maxWidth: '1400px' }}>
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-center" style={{ marginBottom: '80px' }}>
           {title}
         </h1>
 
         <div>
           {content.sections.map((section, idx) => (
-            <div key={idx} id={`section-${idx}`} className="flex flex-col md:flex-row items-stretch" style={{ marginBottom: '48px' }}>
+            <div key={idx} id={`section-${idx}`} className="flex flex-col md:flex-row items-stretch">
               {/* Left Column (Topics) */}
-              <div className="w-full md:w-48 lg:w-56 flex-shrink-0 mb-6 md:mb-0">
-                <a href={`#section-${idx}`} className="text-lg md:text-xl font-bold text-gray-900 hover:text-[#e11d48] transition-colors block" style={{ paddingTop: "4px" }}>
+              <div className="w-full md:w-48 lg:w-64 flex-shrink-0 mb-6 md:mb-0 py-8">
+                <a href={`#section-${idx}`} className="text-lg md:text-xl font-bold text-gray-900 hover:text-[#e11d48] transition-colors block">
                   {section.title}
                 </a>
               </div>
               
               {/* Center Red Line */}
-              <div className="hidden md:block flex-shrink-0" style={{ width: '1.5px', backgroundColor: '#e11d48', marginLeft: '12px', marginRight: '32px' }} />
-              <div className="block md:hidden h-px w-16 bg-[#e11d48] my-6" />
+              <div className="hidden md:block flex-shrink-0" style={{ width: '0.5px', backgroundColor: '#e11d48', marginLeft: '12px', marginRight: '24px' }} />
+              <div className="block md:hidden h-[0.5px] w-16 bg-[#e11d48] my-6" />
 
               {/* Right Column (Content) */}
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 py-8">
                 <div className="text-gray-800 text-sm md:text-base leading-relaxed">
                   <div className="[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-4 [&_li]:pl-2 [&_h4]:font-bold [&_h4]:text-lg [&_h4]:mb-4 [&_h4]:mt-8 space-y-8">
                     {section.content}

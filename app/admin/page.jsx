@@ -30,6 +30,8 @@ function emptyVariant(colorName = "Black", colorHex = "#111111") {
     colorId: "",
     colorName,
     colorHex,
+    variantName: "",
+    description: "",
     priceINR: "",
     discountPriceINR: "",
     mainImage: "",
@@ -56,6 +58,8 @@ function emptyDraft() {
       subcategory: "",
       summary: "",
       summaryAr: "",
+      tagline: "",
+      taglineAr: "",
       description: "",
       descriptionAr: "",
       details: { fit: "", fabric: "", features: "", washCare: "" },
@@ -139,6 +143,8 @@ function groupProducts(catalog) {
         colorId: c?.id || "",
         colorName: c?.color_name || variant.color_name || "Default",
         colorHex: c?.color_hex || variant.color_hex || "#111111",
+        variantName: c?.variant_name || "",
+        description: c?.variant_description || "",
         priceINR: variant.price_inr,
         discountPriceINR: variant.discount_price_inr,
         mainImage: variant.main_image_url,
@@ -432,6 +438,8 @@ export default function AdminPage() {
         subcategory: product.subcategory || "",
         summary: product.summary || "",
         summaryAr: product.summary_ar || "",
+        tagline: product.tagline || "",
+        taglineAr: product.tagline_ar || "",
         description: product.description || "",
         descriptionAr: product.description_ar || "",
         details: {
@@ -490,10 +498,14 @@ export default function AdminPage() {
     if (!idToken) return;
     setSaveLoading(true);
     try {
+      const autoName = draft.variants[0]?.variantName || draft.product.name || "Untitled";
+      const autoDesc = draft.variants[0]?.description || draft.product.description || "";
       const payload = {
         category: draft.category,
         product: {
           ...draft.product,
+          name: autoName,
+          description: autoDesc,
           details: {
             fit: draft.product.details?.fit || "",
             fabric: draft.product.details?.fabric || "",
@@ -857,17 +869,32 @@ export default function AdminPage() {
                   placeholder="Inkphyous"
                 />
               </label>
+
               <label>
-                Product Name
+                Tagline (EN)
                 <input
                   className="admin-light-input"
-                  value={draft.product.name}
+                  value={draft.product.tagline}
                   onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, product: { ...prev.product, name: e.target.value } }))
+                    setDraft((prev) => ({ ...prev, product: { ...prev.product, tagline: e.target.value } }))
                   }
-                  placeholder="Jersey Elements"
+                  placeholder="e.g. Essential comfort"
                 />
               </label>
+
+              <label>
+                Tagline (AR)
+                <input
+                  className="admin-light-input"
+                  value={draft.product.taglineAr}
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, product: { ...prev.product, taglineAr: e.target.value } }))
+                  }
+                  placeholder="Arabic tagline"
+                  dir="auto"
+                />
+              </label>
+
               <label>
                 Price
                 <input
@@ -895,19 +922,7 @@ export default function AdminPage() {
               </label>
             </div>
 
-            <label className="admin-textarea-label" style={{ display: "block", marginBottom: "1rem" }}>
-              <span style={{ display: "block", marginBottom: "0.5rem" }}>Description</span>
-              <ColorEditor
-                value={draft.product.description}
-                onChange={(content) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    product: { ...prev.product, description: content },
-                  }))
-                }
-                colors={COLOR_PALETTE.concat([{ name: "Inkphyous Red", hex: "#e11d48" }])}
-              />
-            </label>
+
 
             <div className="admin-details-grid">
               {["fit", "fabric", "features", "washCare"].map((key) => (
@@ -1013,6 +1028,20 @@ export default function AdminPage() {
                       />
                     </label>
                     <label>
+                      Variant Name
+                      <input
+                        value={variant.variantName}
+                        onChange={(e) =>
+                          setDraft((prev) => {
+                            const next = structuredClone(prev);
+                            next.variants[variantIndex].variantName = e.target.value;
+                            return next;
+                          })
+                        }
+                        placeholder="e.g. Jersey Reptile"
+                      />
+                    </label>
+                    <label>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         Color Hex
                         <div 
@@ -1063,6 +1092,21 @@ export default function AdminPage() {
                       />
                     </label>
                   </div>
+
+                  <label className="admin-textarea-label" style={{ display: "block", marginTop: "1rem", marginBottom: "1rem" }}>
+                    <span style={{ display: "block", marginBottom: "0.5rem" }}>Variant Description</span>
+                    <ColorEditor
+                      value={variant.description}
+                      onChange={(content) =>
+                        setDraft((prev) => {
+                          const next = structuredClone(prev);
+                          next.variants[variantIndex].description = content;
+                          return next;
+                        })
+                      }
+                      colors={COLOR_PALETTE.concat([{ name: "Inkphyous Red", hex: "#e11d48" }])}
+                    />
+                  </label>
 
                   <div className="admin-upload-row" style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
                     <label 

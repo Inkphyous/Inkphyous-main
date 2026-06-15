@@ -34,11 +34,11 @@ function RotatingLogo() {
   );
 }
 
-export default function NavbarLogo3D() {
+export default function NavbarLogo3D({ isMobile }) {
   return (
     <div className="header__3d-logo">
       <Canvas
-        style={{ width: 52, height: 52 }}
+        style={{ width: isMobile ? 38 : 52, height: isMobile ? 38 : 52 }}
         camera={{ position: [0, 0.2, 1.8], fov: 45 }}
         gl={{ alpha: true, antialias: true }}
         dpr={[1, 2]}

@@ -26,7 +26,6 @@ export default function Carousel() {
   const autoPlayRef = useRef(null);
   const isPDP = viewMode === "pdp";
   const [transitioning, setTransitioning] = useState(false);
-  const [pdpOffset, setPdpOffset] = useState(0);
   const prevIndexRef = useRef(activeIndex);
   const directionRef = useRef(1); // 1 = next (up), -1 = prev (down)
   const touchRef = useRef({ active: false, startX: 0, startY: 0, dx: 0, dy: 0 });
@@ -112,12 +111,6 @@ export default function Carousel() {
     return products.find((product) => product.id === pdpProductId) || activeProduct;
   }, [pdpProductId, activeProduct, products]);
 
-  if (!activeProduct) return null;
-
-  useEffect(() => {
-    if (!isPDP) setPdpOffset(0);
-  }, [isPDP]);
-
   const variants = pdpCenterProduct?.variants || [];
   const vLen = variants.length;
   const currentVariantIdx = variants.findIndex(v => v.id === (pdpVariantId || variants[0]?.id));
@@ -145,16 +138,10 @@ export default function Carousel() {
         return;
       }
 
-      let nextIdx;
-      if (dir === "next") { // swipe left -> right item moves to center
-        if (safeVariantIdx >= vLen - 1) return;
-        nextIdx = safeVariantIdx + 1;
-        setPdpOffset((prev) => prev + 1);
-      } else { // swipe right -> left item moves to center
-        if (safeVariantIdx <= 0) return;
-        nextIdx = safeVariantIdx - 1;
-        setPdpOffset((prev) => prev - 1);
-      }
+      const nextIdx =
+        dir === "next"
+          ? (safeVariantIdx + 1) % vLen
+          : (safeVariantIdx - 1 + vLen) % vLen;
       setPdpCategoryVacantLeft(false);
       setPdpVariantId(variants[nextIdx].id);
     },
@@ -198,42 +185,125 @@ export default function Carousel() {
     swipeToNeighbor(dx < 0 ? "next" : "prev");
   };
 
-  const renderItems = useMemo(() => {
-    let items = [...products];
-    if (isPDP) {
-      const needed = Math.max(3, vLen) - items.length;
-      if (needed > 0) {
-        for (let i = 0; i < needed; i++) {
-          items.push({ id: `fake-${i}`, isFake: true });
-        }
-      }
-    }
-    return items;
-  }, [products, isPDP, vLen]);
-
-  const getSlot = (i) => {
-    const len = renderItems.length;
-    let delta = (i - activeIndex + len) % len;
+  const getProductSlot = (i) => {
+    const len = products.length;
+    let delta = ((i - activeIndex) % len + len) % len;
     if (delta > len / 2) delta -= len;
-
-    if (isPDP && pdpCenterProduct) {
-      let offsetDelta = (delta - pdpOffset) % len;
-      if (offsetDelta > len / 2) offsetDelta -= len;
-      if (offsetDelta < -len / 2) offsetDelta += len;
-
-      const rawTargetIdx = safeVariantIdx + offsetDelta;
-
-      if (offsetDelta === 0) return "center";
-      if (offsetDelta === 1 && rawTargetIdx < vLen) return "right";
-      if (offsetDelta === -1 && rawTargetIdx >= 0 && !pdpCategoryVacantLeft) return "left";
-      return "hidden";
-    }
 
     if (delta === 0) return "center";
     if (delta === -1) return "left";
     if (delta === 1) return "right";
     return delta < 0 ? "behindLeft" : "behindRight";
   };
+
+  const variantTrackingRef = useRef({
+    active: false,
+    prevSafeVariantIdx: 0,
+    continuousOffset: 0,
+  });
+
+  let displayActiveIndex = activeIndex;
+
+  if (isPDP) {
+    if (!variantTrackingRef.current.active) {
+      variantTrackingRef.current = {
+        active: true,
+        prevSafeVariantIdx: safeVariantIdx,
+        continuousOffset: 0,
+      };
+    } else if (variantTrackingRef.current.prevSafeVariantIdx !== safeVariantIdx) {
+      const prev = variantTrackingRef.current.prevSafeVariantIdx;
+      const curr = safeVariantIdx;
+      
+      let diff = curr - prev;
+      if (vLen > 0) {
+        if (diff > vLen / 2) diff -= vLen;
+        else if (diff < -vLen / 2) diff += vLen;
+      }
+      
+      variantTrackingRef.current.continuousOffset += diff;
+      variantTrackingRef.current.prevSafeVariantIdx = curr;
+    }
+    
+    displayActiveIndex = activeIndex + variantTrackingRef.current.continuousOffset;
+  } else if (!isPDP && variantTrackingRef.current.active) {
+    variantTrackingRef.current.active = false;
+  }
+
+  const carouselItems = useMemo(() => {
+    if (isPDP && pdpCenterProduct && vLen > 0) {
+      return products.map((product, i) => {
+        const len = products.length;
+        let delta = ((i - displayActiveIndex) % len + len) % len;
+        if (delta > len / 2) delta -= len;
+
+        if (delta === 0) {
+          const currentVariant = variants[safeVariantIdx] || variants[0];
+          return {
+            key: product.id,
+            slot: "center",
+            product: pdpCenterProduct,
+            variant: currentVariant,
+            img: currentVariant.mainImage || currentVariant.image,
+            alt: currentVariant.name || pdpCenterProduct.name,
+          };
+        } else if (delta === 1 && vLen > 1) {
+          const rightVariant = variants[(safeVariantIdx + 1) % vLen];
+          return {
+            key: product.id,
+            slot: "right",
+            product: pdpCenterProduct,
+            variant: rightVariant,
+            img: rightVariant.mainImage || rightVariant.image,
+            alt: rightVariant.name || pdpCenterProduct.name,
+          };
+        } else if (delta === -1 && vLen > 1 && !pdpCategoryVacantLeft) {
+          const leftVariant = variants[(safeVariantIdx - 1 + vLen) % vLen];
+          return {
+            key: product.id,
+            slot: "left",
+            product: pdpCenterProduct,
+            variant: leftVariant,
+            img: leftVariant.mainImage || leftVariant.image,
+            alt: leftVariant.name || pdpCenterProduct.name,
+          };
+        } else {
+          return {
+            key: product.id,
+            slot: "hidden",
+            product,
+            variant: null,
+            img: null,
+            alt: product.name,
+          };
+        }
+      });
+    }
+
+    return products.map((product, i) => {
+      const cIdx = colorMap[i] || 0;
+      return {
+        key: product.id,
+        slot: getProductSlot(i),
+        product,
+        variant: null,
+        img: getImageByColorIndex(product, cIdx),
+        alt: product.name,
+      };
+    });
+  }, [
+    isPDP,
+    pdpCenterProduct,
+    vLen,
+    variants,
+    safeVariantIdx,
+    pdpCategoryVacantLeft,
+    products,
+    activeIndex,
+    displayActiveIndex,
+    colorMap,
+    getImageByColorIndex,
+  ]);
 
   const slotStyles = {
     center: { x: "0%", y: "0%", scale: 1, opacity: 1, filter: "blur(0px)", zIndex: 10 },
@@ -276,7 +346,7 @@ export default function Carousel() {
     }),
   };
 
-  if (viewMode === "grid") return null;
+  if (!activeProduct || viewMode === "grid") return null;
 
   return (
     <div
@@ -288,52 +358,16 @@ export default function Carousel() {
     >
       <div className={`carousel__stage ${isPDP ? "carousel__stage--pdp" : ""}`}>
         <AnimatePresence>
-          {isJerseyPDP && (
-            <motion.div
-              className="carousel__jersey-bg"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.8 }}
-            >
-              <img src="/img/brand/jersey-bg.png" alt="" />
-            </motion.div>
-          )}
         </AnimatePresence>
 
-        {renderItems.map((product, i) => {
-          const slot = getSlot(i);
-          
-          const cIdx = colorMap[i] || 0;
-          let finalImg = product.isFake ? "" : getImageByColorIndex(product, cIdx);
-          let finalAlt = product.name;
-
-          if (isPDP && pdpCenterProduct) {
-            const len = renderItems.length;
-            let delta = (i - activeIndex + len) % len;
-            if (delta > len / 2) delta -= len;
-            
-            let offsetDelta = (delta - pdpOffset) % len;
-            if (offsetDelta > len / 2) offsetDelta -= len;
-            if (offsetDelta < -len / 2) offsetDelta += len;
-
-            if (Math.abs(offsetDelta) <= 1 && vLen > 0) {
-              const rawTargetIdx = safeVariantIdx + offsetDelta;
-              if (rawTargetIdx >= 0 && rawTargetIdx < vLen) {
-                const targetVariant = variants[rawTargetIdx];
-                finalImg = targetVariant.mainImage || targetVariant.image;
-                finalAlt = targetVariant.name || pdpCenterProduct.name;
-              }
-            }
-          }
-
+        {carouselItems.map(({ key, slot, product, img, alt }, idx) => {
           const isCenter = slot === "center";
           const isVisible = slot === "center" || slot === "left" || slot === "right";
           const isJersey = String(product.category || "").toLowerCase().includes("jersey");
 
           return (
             <motion.div
-              key={product.id}
+              key={key}
               className="carousel__item"
               animate={{
                 x: slotStyles[slot].x,
@@ -362,24 +396,22 @@ export default function Carousel() {
                 if (!isVisible) return;
                 if (isPDP) {
                   if (slot === "left") {
-                    setPdpCategoryVacantLeft(false);
                     swipeToNeighbor("prev");
                   } else if (slot === "right") {
-                    setPdpCategoryVacantLeft(false);
                     swipeToNeighbor("next");
                   }
                   return;
                 }
-                handleProductClick(i);
+                handleProductClick(idx);
               }}
             >
               <div className="carousel__item-inner">
                 <AnimatePresence mode="popLayout">
-                  {slot !== "hidden" && finalImg && (
+                  {slot !== "hidden" && img && (
                     <motion.img
-                      key={finalImg}
-                      src={finalImg}
-                      alt={finalAlt}
+                      key={img}
+                      src={img}
+                      alt={alt}
                       loading="lazy"
                       decoding="async"
                       className={isCenter && !isPDP ? "float-breathing" : ""}
@@ -440,7 +472,7 @@ export default function Carousel() {
                   animate="animate"
                   exit="exit"
                 >
-                  {language === "ar" && activeProduct.summaryAr ? activeProduct.summaryAr : activeProduct.summary} | ₹
+                  {language === "ar" && activeProduct.taglineAr ? activeProduct.taglineAr : activeProduct.tagline || activeProduct.summary} | ₹
                   {activeProduct.discountPriceINR || activeProduct.priceINR}
                 </motion.p>
               </AnimatePresence>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, isValidElement } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Heart, ShoppingCart, ChevronDown, Share2 } from "lucide-react";
@@ -62,7 +62,9 @@ function MobileAccordion({ title, content, isOpen, onClick }) {
                 lineHeight: 1.7,
               }}
             >
-              {typeof content === "object" && content !== null ? (
+              {isValidElement(content) ? (
+                content
+              ) : typeof content === "object" && content !== null ? (
                 <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                   {Object.entries(content).map(([key, val]) => {
                     if (typeof val === "object" || typeof val === "boolean" || !val)
@@ -88,6 +90,50 @@ function MobileAccordion({ title, content, isOpen, onClick }) {
   );
 }
 
+const SizeChartContent = () => (
+  <div style={{ padding: "16px", backgroundColor: "#fff", borderRadius: "8px" }}>
+    <p style={{ marginBottom: "16px", color: "#555", fontSize: "14px", lineHeight: "1.5" }}>
+      To assist you in selecting the most accurate fit, please refer to the product measurement details provided for each item.
+    </p>
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
+        <thead>
+          <tr>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>Size</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>S</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>M</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>L</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>XL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Chest</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19.5"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20.5"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21.5"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>22.5"</td>
+          </tr>
+          <tr>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Shoulder</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>18"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21"</td>
+          </tr>
+          <tr>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Length</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>28"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>29"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>30"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>31"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
 export default function MobilePDP({
   product,
   variant,
@@ -110,115 +156,96 @@ export default function MobilePDP({
 
   return (
     <div style={{ width: "100%" }}>
-      {/* Brand + Variant name */}
+      {/* Brand + Variant name + Price + Swatches */}
       <div style={{ marginBottom: "12px" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-          <h1
+        {/* Row 1: Brand/Category & Price */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+            <h1
+              style={{
+                fontFamily: "var(--font-brand)",
+                fontSize: "28px",
+                fontWeight: 800,
+                letterSpacing: "1px",
+                textTransform: "uppercase",
+                color: "var(--color-text)",
+                margin: 0,
+                lineHeight: 1,
+              }}
+            >
+              {product.brand}
+            </h1>
+            <span
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "18px",
+                fontWeight: 800,
+                color: "transparent",
+                WebkitTextStroke: "1px #e11d48",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}
+            >
+              {t(product.category.toLowerCase())}
+            </span>
+          </div>
+          <div
             style={{
-              fontFamily: "var(--font-brand)",
+              fontFamily: "var(--font-heading)",
               fontSize: "28px",
-              fontWeight: 800,
+              fontWeight: 700,
+              color: "var(--color-text)",
+              letterSpacing: "0.5px",
+              lineHeight: 1,
+            }}
+          >
+            ₹{product.discountPriceINR || product.priceINR}
+          </div>
+        </div>
+
+        {/* Row 2: Variant Name & Swatches */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <p
+            style={{
+              fontFamily: "var(--font-heading)",
+              fontSize: "18px",
+              fontWeight: 400,
               letterSpacing: "1px",
               textTransform: "uppercase",
               color: "var(--color-text)",
               margin: 0,
-              lineHeight: 1,
             }}
           >
-            {product.brand}
-          </h1>
-          <span
+            {variant.name}
+          </p>
+          <div
             style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: "18px",
-              fontWeight: 800,
-              color: "transparent",
-              WebkitTextStroke: "1px #e11d48",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
+              display: "flex",
+              flexDirection: "row",
+              gap: "10px",
+              alignItems: "center",
             }}
           >
-            {t(product.category.toLowerCase())}
-          </span>
-        </div>
-        <p
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "18px",
-            fontWeight: 800,
-            letterSpacing: "1px",
-            textTransform: "uppercase",
-            color: "var(--color-text)",
-            margin: "6px 0 0 0",
-          }}
-        >
-          {variant.name}
-        </p>
-      </div>
-
-      {/* ---- PRICE ---- */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          width: "100%",
-          marginBottom: "10px",
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "28px",
-            fontWeight: 700,
-            color: "var(--color-text)",
-            letterSpacing: "0.5px",
-            lineHeight: 1,
-          }}
-        >
-          ₹{product.discountPriceINR || product.priceINR}
-        </div>
-      </div>
-
-      {/* ---- SWATCHES ---- */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          width: "100%",
-          marginBottom: "10px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            gap: "10px",
-            alignItems: "center",
-          }}
-        >
-          {product.variants.map((v) => (
-            <div
-              key={v.id}
-              onClick={() => onSetVariant(v.id)}
-              style={{
-                width: "24px",
-                height: "24px",
-                borderRadius: "50%",
-                backgroundColor:
-                  v.colorHex || v.color?.toLowerCase() || "#ccc",
-                border:
-                  variant.id === v.id
-                    ? "2px solid #000"
-                    : "1.5px solid #ccc",
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            />
-          ))}
+            {product.variants.map((v) => (
+              <div
+                key={v.id}
+                onClick={() => onSetVariant(v.id)}
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  borderRadius: "50%",
+                  backgroundColor:
+                    v.colorHex || v.color?.toLowerCase() || "#ccc",
+                  border:
+                    variant.id === v.id
+                      ? "2px solid #000"
+                      : "1.5px solid #ccc",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -376,7 +403,7 @@ export default function MobilePDP({
         dangerouslySetInnerHTML={{
           __html: language === "ar" && product.descriptionAr
             ? product.descriptionAr
-            : product.description
+            : (variant.description || product.description)
         }}
       />
 
@@ -456,12 +483,12 @@ export default function MobilePDP({
         }
       />
       <MobileAccordion
-        title={`Reviews (${product.reviews})`}
-        content={`${product.rating}/5 stars from ${product.reviews} reviews`}
-        isOpen={activeAccordion === "reviews"}
+        title="Size Chart"
+        content={<SizeChartContent />}
+        isOpen={activeAccordion === "size-chart"}
         onClick={() =>
           setActiveAccordion(
-            activeAccordion === "reviews" ? null : "reviews"
+            activeAccordion === "size-chart" ? null : "size-chart"
           )
         }
       />

@@ -216,7 +216,13 @@ const Cart = () => {
 
             <div className="cart-summary__row">
               <span>{t("shipping")}</span>
-              <span className="cart-summary__shipping-free">{t("free").toUpperCase()} (Express Delivery)</span>
+              <span 
+                className="cart-summary__shipping-free" 
+                style={{ cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => router.push("/legal/shipping")}
+              >
+                View Shipping Policy
+              </span>
             </div>
 
             <div className="cart-summary__divider" />
@@ -262,9 +268,9 @@ const Cart = () => {
 
             <div className="cart-summary__divider" />
 
-            <p className="cart-summary__disclaimer">
+            {/* <p className="cart-summary__disclaimer">
               You will be charged only at the time of shipment except for DIY orders where the <em>full amount</em> is charged at the time of purchase.
-            </p>
+            </p> */}
 
             <button
               className="cart-summary__checkout"

@@ -4,7 +4,7 @@ import { Suspense, lazy, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { MoreVertical } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useStore } from "@/components/providers/StoreProvider";
 import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
@@ -115,7 +115,15 @@ function HomePageInner() {
             onClick={() => setMobileCategoriesOpen((prev) => !prev)}
             aria-label="Toggle categories"
           >
-            <MoreVertical size={16} strokeWidth={2.5} />
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55)", 
+              transform: mobileCategoriesOpen ? "rotate(45deg)" : "rotate(0deg)"
+            }}>
+              <Plus size={18} strokeWidth={2.5} />
+            </div>
           </button>
 
           <AnimatePresence>

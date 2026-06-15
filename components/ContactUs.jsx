@@ -172,6 +172,15 @@ const ContactUs = () => {
   const router = useRouter();
   const { t } = useStore();
   
+  const [isMobile, setIsMobile] = useState(false);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -253,7 +262,7 @@ const ContactUs = () => {
   const labelStyle = {
     fontSize: "11px",
     fontWeight: "bold",
-    letterSpacing: "2px",
+    letterSpacing: isMobile ? "1px" : "2px",
     fontFamily: "var(--font-heading)",
     color: "#000",
     textTransform: "uppercase"
@@ -275,25 +284,25 @@ const ContactUs = () => {
       </button>
 
       {/* MAIN CONTAINER */}
-      <div style={{ width: "100%", maxWidth: "800px", padding: "0 24px" }}>
+      <div style={{ width: "100%", maxWidth: "800px", padding: isMobile ? "0 16px" : "0 24px" }}>
         
         {/* TOP TEXT SECTION */}
         <div style={{ marginBottom: "60px" }}>
-          <h1 style={{ fontSize: "20px", letterSpacing: "4px", marginBottom: "40px", fontFamily: "var(--font-heading)", fontWeight: "600", color: "#000" }}>CONTACT</h1>
+          <h1 style={{ fontSize: "36px", letterSpacing: "4px", marginBottom: "40px", fontFamily: "var(--font-brand)", fontWeight: "normal", color: "#000" }}>CONTACT</h1>
           
           <h2 style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "bold", marginBottom: "8px", fontFamily: "var(--font-heading)", color: "#000" }}>ENQUIRIES</h2>
-          <p style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "bold", marginBottom: "40px", fontFamily: "var(--font-heading)", color: "#000" }}>INFO@INKPHYYOUS.COM</p>
+          <a href="mailto:info@inkphyous.com" style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "normal", marginBottom: "40px", fontFamily: "var(--font-heading)", color: "#e11d48", textDecoration: "none", display: "inline-block" }}>INFO@INKPHYOUS.COM</a>
           
           <h2 style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "bold", marginBottom: "16px", fontFamily: "var(--font-heading)", color: "#000" }}>SEND US A MESSAGE</h2>
-          <p style={{ fontSize: "13px", lineHeight: "1.6", color: "#333", fontFamily: "var(--font-body)", maxWidth: "700px" }}>
-            If you have any questions about your order or need further assistance, you can always contact us at info@inkphyous.com. Alternatively, please complete the form by selecting a subject and entering your question or comment. Our Customer Service team will review your message and respond as soon as possible.
+          <p style={{ fontSize: "13px", lineHeight: "1.6", color: "#333", fontFamily: "var(--font-body)", maxWidth: "800px" }}>
+            If you have any questions about your order or need further assistance, you can always contact us at <a href="mailto:info@inkphyous.com" style={{ color: "#e11d48", textDecoration: "none", fontWeight: "normal" }}>info@inkphyous.com</a>. Alternatively, please complete the form by selecting a subject and entering your question or comment. Our Customer Service team will review your message and respond as soon as possible.
           </p>
         </div>
 
         {/* FORM SECTION */}
         <div style={{ display: "flex", flexDirection: "row", width: "100%" }}>
           {/* LABELS COLUMN */}
-          <div style={{ width: "120px", borderRight: "1.5px solid #e11d48", paddingRight: "24px", display: "flex", flexDirection: "column", gap: "24px", flexShrink: 0 }}>
+          <div style={{ width: isMobile ? "75px" : "120px", borderRight: "0.5px solid #e11d48", paddingRight: isMobile ? "8px" : "24px", display: "flex", flexDirection: "column", gap: "24px", flexShrink: 0 }}>
             <div style={{ height: "45px", display: "flex", alignItems: "center" }}><span style={labelStyle}>NAME</span></div>
             <div style={{ height: "45px", display: "flex", alignItems: "center" }}><span style={labelStyle}>SUBJECT</span></div>
             <div style={{ height: "45px", display: "flex", alignItems: "center" }}><span style={labelStyle}>EMAIL</span></div>
@@ -302,7 +311,7 @@ const ContactUs = () => {
           </div>
 
           {/* INPUTS COLUMN */}
-          <div style={{ flex: 1, paddingLeft: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+          <div style={{ flex: 1, paddingLeft: isMobile ? "12px" : "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
             <FloatingInput
               placeholder="NAME"
               value={name}

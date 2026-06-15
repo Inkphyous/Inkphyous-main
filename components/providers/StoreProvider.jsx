@@ -74,6 +74,8 @@ export function StoreProvider({ children }) {
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginPromptMessage, setLoginPromptMessage] = useState("Login to continue");
 
+  const [isPDPScrolledToBottom, setIsPDPScrolledToBottom] = useState(false);
+
   const wishlistProductIds = useMemo(() => {
     return new Set(
       (wishlistItems || [])
@@ -597,6 +599,9 @@ export function StoreProvider({ children }) {
     openLoginPrompt,
     closeLoginPrompt,
     requireAuth,
+
+    isPDPScrolledToBottom,
+    setIsPDPScrolledToBottom,
 
     normalizeProductSlug,
   };

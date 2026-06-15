@@ -77,6 +77,22 @@ export default function Header() {
     return () => window.removeEventListener("pdp-scroll", onPdpScroll);
   }, []);
 
+  useEffect(() => {
+    if (isPDP) {
+      window.history.pushState({ pdpOpen: true }, '');
+      
+      const handlePopState = (e) => {
+        closePDP();
+        router.push('/');
+      };
+      
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [isPDP, closePDP, router]);
+
   return (
     <>
       <header className={`header${scrolled || pdpScrolled ? " header--scrolled" : ""}`}>
@@ -102,70 +118,73 @@ export default function Header() {
               switchView("carousel");
             }}
           >
-            <NavbarLogo3D />
+            <NavbarLogo3D isMobile={isMobile} />
           </Link>
         </div>
 
         {/* Right icons */}
-        <div className="header__right-icons">
-          {/* Login / Profile Dropdown Button — placed FIRST (left) */}
-          {user ? (
-            <div className="header__profile-container" ref={profileRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
-              <button 
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)} 
-                className="header__login-pill header__login-pill--logged-in" 
-                aria-label="Profile"
-              >
-                <User size={15} strokeWidth={2.5} />
-                <span>{userData?.name ? userData.name.split(" ")[0].toUpperCase() : ""}</span>
-                <ChevronDown size={14} strokeWidth={2.5} style={{ marginLeft: "2px" }} />
-              </button>
+        <div className="header__right-icons" style={isMobile ? { gap: "8px", right: "12px" } : {}}>
+          {/* Login / Profile Dropdown Button — ONLY DESKTOP */}
+          {!isMobile && (
+            user ? (
+              <div className="header__profile-container" ref={profileRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <button 
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)} 
+                  className="header__login-pill header__login-pill--logged-in" 
+                  aria-label="Profile"
+                >
+                  <User size={15} strokeWidth={2.5} />
+                  <span>{userData?.name ? userData.name.split(" ")[0].toUpperCase() : ""}</span>
+                  <ChevronDown size={14} strokeWidth={2.5} style={{ marginLeft: "2px" }} />
+                </button>
 
-              <AnimatePresence>
-                {profileDropdownOpen && (
-                  <motion.div
-                    className="header__lang-menu"
-                    style={{ right: 0, minWidth: "120px", display: "flex", flexDirection: "column", marginTop: "4px" }}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                  >
-                    <button 
-                      onClick={() => {
-                        router.push("/wishlist");
-                        setProfileDropdownOpen(false);
-                      }} 
-                      style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
+                <AnimatePresence>
+                  {profileDropdownOpen && (
+                    <motion.div
+                      className="header__lang-menu"
+                      style={{ right: 0, minWidth: "120px", display: "flex", flexDirection: "column", marginTop: "4px" }}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
                     >
-                      WISHLIST
-                    </button>
-                    <button 
-                      onClick={() => { setEditProfilePopupOpen(true); setProfileDropdownOpen(false); }} 
-                      style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
-                    >
-                      {t("editProfile")}
-                    </button>
-                    <button 
-                      onClick={() => { logout(); setProfileDropdownOpen(false); }} 
-                      style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", color: "#e11d48", width: "100%" }}
-                    >
-                      {t("signOut")}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <Link href="/login" className="header__login-pill" aria-label="Login">
-              <User size={15} strokeWidth={2.5} />
-              <span>{t("login")}</span>
-            </Link>
+                      <button 
+                        onClick={() => {
+                          router.push("/wishlist");
+                          setProfileDropdownOpen(false);
+                        }} 
+                        style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
+                      >
+                        WISHLIST
+                      </button>
+                      <button 
+                        onClick={() => { setEditProfilePopupOpen(true); setProfileDropdownOpen(false); }} 
+                        style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
+                      >
+                        {t("editProfile")}
+                      </button>
+                      <button 
+                        onClick={() => { logout(); setProfileDropdownOpen(false); }} 
+                        style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", color: "#e11d48", width: "100%" }}
+                      >
+                        {t("signOut")}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Link href="/login" className="header__login-pill" aria-label="Login">
+                <User size={15} strokeWidth={2.5} />
+                <span>{t("login")}</span>
+              </Link>
+            )
           )}
 
-          {/* Cart / Bag Button — placed SECOND (right), icon only with badge */}
+          {/* Cart / Bag Button */}
           <button
             className="header__cart-pill"
             aria-label="Bag"
+            style={isMobile ? { background: "transparent", padding: 0, width: "auto", height: "auto", minWidth: 0, minHeight: 0 } : {}}
             onClick={() => {
               if (!requireAuth("Login to continue")) return;
               if (viewMode === "pdp") {
@@ -176,7 +195,7 @@ export default function Header() {
             }}
           >
             <div className="header__bag-icon-wrap">
-              <ShoppingBag size={15} strokeWidth={2.5} />
+              <ShoppingBag size={isMobile ? 22 : 15} strokeWidth={2.5} color={isMobile ? "#000" : "#fff"} />
               {cartItemCount > 0 && (
                 <span className="header__bag-badge">{cartItemCount}</span>
               )}
@@ -187,19 +206,24 @@ export default function Header() {
           <div className="header__menu-dropdown" ref={menuRef}>
             <button
               className="header__menu-pill"
+              style={isMobile ? { background: "transparent", padding: 0, width: "auto", height: "auto", minWidth: 0, minHeight: 0 } : {}}
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Menu"
             >
-              <Menu size={16} strokeWidth={2.5} />
+              {user ? (
+                <Menu size={isMobile ? 24 : 16} strokeWidth={2.5} color={isMobile ? "#000" : "#fff"} />
+              ) : (
+                <User size={isMobile ? 24 : 16} strokeWidth={2.5} color={isMobile ? "#e11d48" : "#fff"} />
+              )}
             </button>
 
             <AnimatePresence>
               {menuOpen && (
                 <motion.div
                   className="header__lang-menu header__menu-panel"
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
+                  exit={{ opacity: 0, y: -10 }}
                 >
                   <button
                     onClick={() => {
@@ -272,9 +296,9 @@ export default function Header() {
               {langOpen && (
                 <motion.div
                   className="header__lang-menu"
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
+                  exit={{ opacity: 0, y: -10 }}
                 >
                   <button onClick={() => { setLanguage("en"); setLangOpen(false); }}>EN</button>
                   <button onClick={() => { setLanguage("ar"); setLangOpen(false); }}>AR</button>
@@ -287,10 +311,12 @@ export default function Header() {
 
       {/* Back button — positioned BELOW the navbar */}
       <AnimatePresence>
-        {isPDP && pathname === "/" && (
+        {isPDP && pathname === "/" && !pdpScrolled && (
           <motion.button
             className="header__back-btn shared-back-btn"
-            onClick={closePDP}
+            onClick={() => {
+              window.history.back();
+            }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}

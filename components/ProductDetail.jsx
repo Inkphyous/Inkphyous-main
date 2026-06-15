@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, isValidElement } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -33,7 +33,9 @@ function Accordion({ title, content, isOpen, onClick }) {
             style={{ overflow: "hidden" }}
           >
             <div className="pdp-accordion__content">
-              {typeof content === "object" && content !== null ? (
+              {isValidElement(content) ? (
+                content
+              ) : typeof content === "object" && content !== null ? (
                 <ul style={{ listStyle: "none", padding: 0 }}>
                   {Object.entries(content).map(([key, val]) => {
                     if (typeof val === "object" || typeof val === "boolean" || !val) return null;
@@ -54,6 +56,50 @@ function Accordion({ title, content, isOpen, onClick }) {
     </div>
   );
 }
+
+const SizeChartContent = () => (
+  <div style={{ padding: "16px", backgroundColor: "#fff", borderRadius: "8px" }}>
+    <p style={{ marginBottom: "16px", color: "#555", fontSize: "14px", lineHeight: "1.5" }}>
+      To assist you in selecting the most accurate fit, please refer to the product measurement details provided for each item.
+    </p>
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
+        <thead>
+          <tr>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>Size</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>S</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>M</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>L</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>XL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Chest</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19.5"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20.5"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21.5"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>22.5"</td>
+          </tr>
+          <tr>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Shoulder</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>18"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21"</td>
+          </tr>
+          <tr>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Length</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>28"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>29"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>30"</td>
+            <td style={{ padding: "12px", border: "1px solid #ddd" }}>31"</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
 
 export default function ProductDetail() {
   const {
@@ -76,6 +122,15 @@ export default function ProductDetail() {
   const [activeAccordion, setActiveAccordion] = useState(null);
   const [notificationMessage, setNotificationMessage] = useState("");
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const initialDist = useRef(null);
+  const initialScale = useRef(1);
+  const lastTap = useRef(0);
+  const lastTouch = useRef({ x: 0, y: 0 });
+  const wasPinching = useRef(false);
+  
   const overlayRef = useRef(null);
   const swipeRef = useRef({ active: false, startX: 0, startY: 0, dx: 0, dy: 0 });
   const [isMobile, setIsMobile] = useState(false);
@@ -117,6 +172,8 @@ export default function ProductDetail() {
   }, [pdpProductId, pdpVariantId]);
 
   useEffect(() => {
+    setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
     if (lightboxIndex !== null) {
       document.body.classList.add("lightbox-open");
     } else {
@@ -125,11 +182,80 @@ export default function ProductDetail() {
     return () => document.body.classList.remove("lightbox-open");
   }, [lightboxIndex]);
 
+  const handleTouchStartLightbox = useCallback((e) => {
+    if (e.touches.length === 2) {
+      wasPinching.current = true;
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialDist.current = dist;
+      initialScale.current = zoomLevel;
+    } else if (e.touches.length === 1 && zoomLevel > 1) {
+      lastTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, [zoomLevel]);
+
+  const handleTouchMoveLightbox = useCallback((e) => {
+    if (e.touches.length === 2 && initialDist.current) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const delta = dist / initialDist.current;
+      const newScale = Math.max(1, Math.min(initialScale.current * delta, 4));
+      setZoomLevel(newScale);
+      if (newScale <= 1) {
+        setPanPosition({ x: 0, y: 0 });
+      }
+    } else if (e.touches.length === 1 && zoomLevel > 1) {
+      const dx = e.touches[0].clientX - lastTouch.current.x;
+      const dy = e.touches[0].clientY - lastTouch.current.y;
+      setPanPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      lastTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, [zoomLevel]);
+
+  const handleTouchEndLightbox = useCallback((e) => {
+    if (e.touches.length < 2) {
+      initialDist.current = null;
+    }
+    
+    if (e.touches.length === 0) {
+      if (wasPinching.current) {
+        wasPinching.current = false;
+        return;
+      }
+      
+      if (e.changedTouches.length === 1) {
+        const now = Date.now();
+        if (now - lastTap.current < 300) {
+          if (zoomLevel > 1) {
+            setZoomLevel(1);
+            setPanPosition({ x: 0, y: 0 });
+          } else {
+            setZoomLevel(2.5);
+          }
+          lastTap.current = 0;
+        } else {
+          lastTap.current = now;
+        }
+      }
+    }
+  }, [zoomLevel]);
+
   const handleScroll = useCallback(() => {
     const el = overlayRef.current;
     if (!el) return;
     const scrollTop = el.scrollTop;
     const progress = Math.max(0, Math.min(scrollTop / 400, 1));
+    
+    if (scrollTop <= 5) {
+      const detailsEl = el.querySelector(".pdp-overlay__details-wrap");
+      if (detailsEl && detailsEl.scrollTop > 0) {
+        detailsEl.scrollTop = 0;
+      }
+    }
     
     window.dispatchEvent(new CustomEvent("pdp-scroll", { detail: scrollTop > 10 }));
 
@@ -368,7 +494,7 @@ export default function ProductDetail() {
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex(null); }}>
                   <X size={24} strokeWidth={2} style={{ pointerEvents: "none" }} />
                 </button>
-                {galleryImages.length > 1 && (
+                {galleryImages.length > 1 && zoomLevel === 1 && (
                   <button className="pdp-lightbox__arrow pdp-lightbox__arrow--left"
                     style={{ zIndex: 99999, pointerEvents: "auto" }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1)); }}>
@@ -376,12 +502,18 @@ export default function ProductDetail() {
                   </button>
                 )}
                 <motion.div className="pdp-lightbox__image-wrap" key={lightboxIndex}
-                  initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.2 }}
-                  onClick={(e) => e.stopPropagation()} style={{ zIndex: 1000 }}>
-                  <img src={galleryImages[lightboxIndex]} alt={`${product.name} view ${lightboxIndex + 1}`} className="pdp-lightbox__image" />
+                  initial={{ opacity: 0, scale: 0.92, x: 0, y: 0 }} 
+                  animate={{ opacity: 1, scale: zoomLevel, x: panPosition.x, y: panPosition.y }}
+                  exit={{ opacity: 0, scale: 0.92, x: 0, y: 0 }} 
+                  transition={{ duration: initialDist.current ? 0 : 0.2 }}
+                  onClick={(e) => e.stopPropagation()} 
+                  onTouchStart={handleTouchStartLightbox}
+                  onTouchMove={handleTouchMoveLightbox}
+                  onTouchEnd={handleTouchEndLightbox}
+                  style={{ zIndex: 1000, touchAction: "none" }}>
+                  <img src={galleryImages[lightboxIndex]} alt={`${product.name} view ${lightboxIndex + 1}`} className="pdp-lightbox__image" style={{ pointerEvents: "none" }} />
                 </motion.div>
-                {galleryImages.length > 1 && (
+                {galleryImages.length > 1 && zoomLevel === 1 && (
                   <button className="pdp-lightbox__arrow pdp-lightbox__arrow--right"
                     style={{ zIndex: 99999, pointerEvents: "auto" }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0)); }}>
@@ -565,8 +697,8 @@ export default function ProductDetail() {
                     isOpen={activeAccordion === "details"} onClick={() => setActiveAccordion(activeAccordion === "details" ? null : "details")} />
                   <Accordion title="Free Delivery and Returns" content="Standard processing time for orders is up to 24 hours, with delivery typically completed within 3–5 business days after dispatch."
                     isOpen={activeAccordion === "delivery"} onClick={() => setActiveAccordion(activeAccordion === "delivery" ? null : "delivery")} />
-                  <Accordion title={`Reviews (${product.reviews})`} content={`${product.rating}/5 stars from ${product.reviews} reviews`}
-                    isOpen={activeAccordion === "reviews"} onClick={() => setActiveAccordion(activeAccordion === "reviews" ? null : "reviews")} />
+                  <Accordion title="Size Chart" content={<SizeChartContent />}
+                    isOpen={activeAccordion === "size-chart"} onClick={() => setActiveAccordion(activeAccordion === "size-chart" ? null : "size-chart")} />
 
 
             </motion.div>

@@ -64,7 +64,7 @@ export default function GridView() {
                   </span>
                 </div>
                 <span className="grid-view__name">
-                  {language === "ar" && product.nameAr ? product.nameAr : product.summary.split("|")[0].trim()}
+                  {language === "ar" && (product.taglineAr || product.nameAr) ? (product.taglineAr || product.nameAr) : (product.tagline || product.summary?.split("|")[0]?.trim())}
                 </span>
                 
                 {/* Color dots */}
