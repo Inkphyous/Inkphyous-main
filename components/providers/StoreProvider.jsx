@@ -143,6 +143,7 @@ export function StoreProvider({ children }) {
   const setPdpVariantId = useCallback(
     (variantId) => {
       setPdpVariantIdState(variantId);
+      setPdpCategoryVacantLeft(false);
       if (!variantId) return;
       const product = getProductByVariantId(variantId);
       if (!product) return;
@@ -259,6 +260,7 @@ export function StoreProvider({ children }) {
     );
     if (viewMode === "pdp" && product.id === pdpProductId && variant?.id) {
       setPdpVariantIdState(variant.id);
+      setPdpCategoryVacantLeft(false);
     }
   }, [products, viewMode, pdpProductId]);
 
