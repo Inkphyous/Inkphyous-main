@@ -534,9 +534,10 @@ export const getLegalContent = (language, t) => {
         content: (
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
             <p>We accept return and exchange requests within <strong>Five (5) days</strong> from the date of delivery.</p>
-            <p>Once your request has been reviewed and approved, our logistics partner will schedule a collection within <strong>24–48 hours</strong>, subject to service availability in your area. Pickups will be attempted up to <strong>two times</strong>.</p>
+            <p>Once your request has been reviewed and approved, our logistics partner will schedule a collection within <strong>24–48 hours</strong>, subject to service availability in your area. </p>
+            <p>Exchange/Replacement Deliveries will be done within <strong>5-7 business days</strong>. Pickups will be attempted up to <strong>two times</strong>.</p>
             <p>If our courier partner is unable to complete the collection, you may be required to <strong>return the shipment directly</strong> to our warehouse. Reverse pickup service is subject to availability based on your area's pincode coverage.</p>
-            <p>Returned products undergo a mandatory <strong>Quality Check (QC)</strong> upon receipt. Products must be returned in <strong>unused, unwashed, and undamaged</strong> condition, with original packaging, brand tags, and all accompanying accessories intact.</p>
+            <p>Returned products undergo a mandatory <strong>Quality Check (QC)</strong> upon received. Products must be returned in <strong>unused, unwashed, and undamaged</strong> condition, with original packaging, brand tags, and all accompanying accessories intact.</p>
             <p>If the requested size or item is unavailable, a <strong>Refund Points</strong> of equivalent value will be issued, redeemable for future online purchases.</p>
           </div>
         )
@@ -547,7 +548,7 @@ export const getLegalContent = (language, t) => {
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
             <p><strong>Cash on Delivery (COD) Orders:</strong> May be cancelled only <strong>prior to dispatch</strong> from our warehouse.</p>
             <p><strong>Prepaid Orders:</strong> Are <strong>final and non-refundable</strong> once confirmed.</p>
-            <p>Refunds, where applicable, will be issued as <strong>Refund Points</strong> valid for <strong>six (6) months</strong> from the date of issue. Shipping and handling charges are non-refundable.</p>
+            <p>Refunds, where applicable, will be issued as <strong>Refund Points</strong> within 2 days of return pickup and it will be valid for <strong>six (6) months</strong> from the date of issue. Shipping and handling charges are non-refundable.</p>
           </div>
         )
       },
@@ -857,6 +858,7 @@ export const getLegalContent = (language, t) => {
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
             <p>If you have any questions, concerns, or requests regarding this Privacy Policy, please contact us at:</p>
             <p className="font-semibold">📧 Email: <a href="mailto:info@inkphyous.com" className="text-rose-600 hover:underline">info@inkphyous.com</a></p>
+            <p className="font-semibold">📞 WhatsApp: <a href="https://wa.me/+919665897907" className="text-rose-600 hover:underline">+91 9665897907</a></p>
           </div>
         )
       }
