@@ -293,7 +293,7 @@ export const getLegalContent = (language, t) => {
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
             <p>Welcome to <strong>Inkphyous.com</strong> , a website owned and operated by <strong>Inkphyous</strong> ("Inkphyous," "we," or "us"). These <strong>Terms of Use</strong> and our <strong>Privacy Policy</strong> apply to all visitors, users, and others who access or use this Website ("Users" or "you").</p>
             <p>By accessing or using this Website and/or purchasing products through it, you agree to comply with and be bound by these Terms of Use and our Privacy Policy. If you do not agree to these Terms of Use or the Privacy Policy, you must not access or use this Website.</p>
-            <p>Last updated on [Insert Date].</p>
+            <p>Last updated on [22/06/2026].</p>
           </div>
         )
       },
