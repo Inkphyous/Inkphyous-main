@@ -129,7 +129,7 @@ export const getLegalContent = (language, t) => {
         title: "مقدمة",
         content: (
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide text-right" dir="rtl">
-            <p>مرحباً بك في <strong>Inkphyous.com</strong>، وهو موقع إلكتروني مملوك ومدار من قبل <strong>Inkphyous, LLC</strong> ("Inkphyous" أو "نحن" أو "نا"). تطبق <strong>شروط الاستخدام</strong> هذه و<strong>سياسة الخصوصية</strong> الخاصة بنا على جميع الزوار والمستخدمين وغيرهم ممن يصلون إلى أو يستخدمون هذا الموقع ("المستخدمون" أو "أنت").</p>
+            <p>مرحباً بك في <strong>Inkphyous.com</strong>، وهو موقع إلكتروني مملوك ومدار من قبل <strong>Inkphyous</strong> ("Inkphyous" أو "نحن" أو "نا"). تطبق <strong>شروط الاستخدام</strong> هذه و<strong>سياسة الخصوصية</strong> الخاصة بنا على جميع الزوار والمستخدمين وغيرهم ممن يصلون إلى أو يستخدمون هذا الموقع ("المستخدمون" أو "أنت").</p>
             <p>من خلال الوصول إلى هذا الموقع أو استخدامه و/أو شراء المنتجات من خلاله، فإنك توافق على الامتثال والالتزام بشروط الاستخدام هذه وسياسة الخصوصية الخاصة بنا. إذا كنت لا توافق على شروط الاستخدام هذه أو سياسة الخصوصية، فيجب عليك عدم الوصول إلى هذا الموقع أو استخدامه.</p>
             <p>آخر تحديث في [أدخل التاريخ].</p>
           </div>
@@ -291,7 +291,7 @@ export const getLegalContent = (language, t) => {
         title: "Introduction",
         content: (
           <div className="space-y-6 text-gray-700 leading-loose text-justify sm:text-left tracking-wide">
-            <p>Welcome to <strong>Inkphyous.com</strong> , a website owned and operated by <strong>Inkphyous, LLC</strong> ("Inkphyous," "we," or "us"). These <strong>Terms of Use</strong> and our <strong>Privacy Policy</strong> apply to all visitors, users, and others who access or use this Website ("Users" or "you").</p>
+            <p>Welcome to <strong>Inkphyous.com</strong> , a website owned and operated by <strong>Inkphyous</strong> ("Inkphyous," "we," or "us"). These <strong>Terms of Use</strong> and our <strong>Privacy Policy</strong> apply to all visitors, users, and others who access or use this Website ("Users" or "you").</p>
             <p>By accessing or using this Website and/or purchasing products through it, you agree to comply with and be bound by these Terms of Use and our Privacy Policy. If you do not agree to these Terms of Use or the Privacy Policy, you must not access or use this Website.</p>
             <p>Last updated on [Insert Date].</p>
           </div>
