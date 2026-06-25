@@ -5,7 +5,7 @@ function jsonError(message, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status });
 }
 
-async function buildCartResponse(supabase, userId) {
+export async function buildCartResponse(supabase, userId) {
   const { data: cartRows, error: cartError } = await supabase
     .from("cart_items")
     .select("*")

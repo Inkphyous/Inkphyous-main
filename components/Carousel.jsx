@@ -30,6 +30,8 @@ export default function Carousel() {
   const directionRef = useRef(1); // 1 = next (up), -1 = prev (down)
   const touchRef = useRef({ active: false, startX: 0, startY: 0, dx: 0, dy: 0 });
 
+  if (products.length === 0) return null;
+
   // Calculate direction synchronously during render so Framer Motion
   // gets the exact correct direction before the exit animation starts.
   if (activeIndex !== prevIndexRef.current) {
@@ -126,16 +128,13 @@ export default function Carousel() {
         return;
       }
       
-      // If product has no variants to cycle, fallback to scrolling to the next product
       if (vLen <= 1) {
-        if (dir === "next") {
-          const nextIndex = (activeIndex + 1) % products.length;
-          openPDP(nextIndex);
-        } else {
-          const prevIndex = (activeIndex - 1 + products.length) % products.length;
-          openPDP(prevIndex);
-        }
         return;
+      }
+
+      if (vLen === 2) {
+        if (dir === "next" && safeVariantIdx === 1) return;
+        if (dir === "prev" && safeVariantIdx === 0) return;
       }
 
       const nextIdx =
@@ -258,6 +257,9 @@ export default function Carousel() {
             alt: currentVariant.name || pdpCenterProduct.name,
           };
         } else if (delta === 1 && vLen > 1) {
+          if (vLen === 2 && safeVariantIdx === 1) {
+            return { key: product.id, slot: "hidden", product, variant: null, img: null, alt: product.name };
+          }
           const rightVariant = variants[(safeVariantIdx + 1) % vLen];
           return {
             key: product.id,
@@ -268,6 +270,9 @@ export default function Carousel() {
             alt: rightVariant.name || pdpCenterProduct.name,
           };
         } else if (delta === -1 && vLen > 1 && !pdpCategoryVacantLeft) {
+          if (vLen === 2 && safeVariantIdx === 0) {
+            return { key: product.id, slot: "hidden", product, variant: null, img: null, alt: product.name };
+          }
           const leftVariant = variants[(safeVariantIdx - 1 + vLen) % vLen];
           return {
             key: product.id,
@@ -358,7 +363,24 @@ export default function Carousel() {
 
   if (!activeProduct || viewMode === "grid") return null;
 
+  let homeDotSizes = [6, 10, 6];
+  if (!isPDP && transitioning) {
+    if (direction === -1) {
+      homeDotSizes = [6, 6, 10];
+    } else if (direction === 1) {
+      homeDotSizes = [10, 6, 6];
+    }
+  }
+
+  let activePdpDotIdx = safeVariantIdx;
+  if (isPDP && transitioning && vLen > 0) {
+    activePdpDotIdx = safeVariantIdx - direction;
+    if (activePdpDotIdx < 0) activePdpDotIdx += vLen;
+    if (activePdpDotIdx >= vLen) activePdpDotIdx -= vLen;
+  }
+
   return (
+    <>
     <div
       className="carousel"
       id="carousel-element"
@@ -500,5 +522,53 @@ export default function Carousel() {
         )}
       </AnimatePresence>
     </div>
+
+      {/* Mobile Dot Indicators */}
+      <div className={`mobile-dots ${isPDP ? "mobile-dots--pdp" : ""}`}>
+        {!isPDP ? (
+          <AnimatePresence mode="popLayout">
+            {[-1, 0, 1].map((offset) => {
+              const absoluteIdx = activeIndex + offset;
+              const idx = ((absoluteIdx % products.length) + products.length) % products.length;
+              return (
+                <motion.div
+                  key={`home-dot-${absoluteIdx}`}
+                  layout
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    width: offset === 0 ? 10 : 6,
+                    height: offset === 0 ? 10 : 6,
+                    backgroundColor: offset === 0 ? "var(--color-primary, #e11d48)" : "#000",
+                  }}
+                  exit={{ opacity: 0, scale: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  className="mobile-dot"
+                />
+              );
+            })}
+          </AnimatePresence>
+        ) : (
+          vLen > 0 &&
+          variants.map((v, i) => {
+            const size = i === activePdpDotIdx ? 10 : 6;
+            return (
+              <motion.div
+                key={`pdp-dot-${i}`}
+                layout
+                animate={{ 
+                  width: size, 
+                  height: size,
+                  backgroundColor: i === activePdpDotIdx ? "var(--color-primary, #e11d48)" : "#000" 
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className="mobile-dot"
+              />
+            );
+          })
+        )}
+      </div>
+    </>
   );
 }

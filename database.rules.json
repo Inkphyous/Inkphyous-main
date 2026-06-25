@@ -15,6 +15,20 @@
       "$queryId": {
         ".write": "!data.exists()"
       }
+    },
+    "addresses": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    "orders": {
+      ".read": "auth != null && query.orderByChild == 'userId' && query.equalTo == auth.uid",
+      ".indexOn": ["userId"],
+      "$orderId": {
+        ".read": "auth != null && data.child('userId').val() === auth.uid",
+        ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid)"
+      }
     }
   }
 }

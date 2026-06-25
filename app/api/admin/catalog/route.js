@@ -127,6 +127,7 @@ async function upsertProductPayload(supabase, payload) {
   const enabledSizes = new Set();
   let canWriteVariantSizes = true;
   const variantSizesMap = {};
+  const variantSemiDescriptionsMap = {};
 
   for (const [variantPosition, variantInput] of variantsInput.entries()) {
     const colorName = variantInput.colorName || variantInput.color || "Default";
@@ -141,6 +142,8 @@ async function upsertProductPayload(supabase, payload) {
         position: sIdx,
       };
     });
+    
+    variantSemiDescriptionsMap[colorName] = variantInput.semiDescription || "";
 
     const { data: colorRows, error: colorError } = await supabase
       .from("product_colors")
@@ -261,6 +264,7 @@ async function upsertProductPayload(supabase, payload) {
   const newDetails = productRow.details && typeof productRow.details === "object" ? { ...productRow.details } : {};
   newDetails.migrated_sizes = true;
   newDetails.variant_sizes = variantSizesMap;
+  newDetails.variant_semi_descriptions = variantSemiDescriptionsMap;
 
   const sizeOptions = enabledSizes.size ? [...enabledSizes] : [];
   const { error: updateProductError } = await supabase

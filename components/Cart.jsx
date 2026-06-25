@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "./providers/StoreProvider";
-import { ArrowLeft, Printer, Heart, Plus, X } from "lucide-react";
+import { ArrowLeft, Printer, Heart, Plus, X, ChevronDown } from "lucide-react";
 import { useEffect } from "react";
 
 const Cart = () => {
@@ -22,6 +22,7 @@ const Cart = () => {
     toggleWishlist,
     isWishlisted,
     products,
+    cartLoading,
   } = useStore();
   const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -63,6 +64,15 @@ const Cart = () => {
   // Calculate VAT (assuming 5% VAT)
   const vatRate = 0.05;
   const vatAmount = Math.round(cartTotal * vatRate);
+
+  if (authLoading || cartLoading) {
+    return (
+      <div className="cart-page">
+        <div className="cart-page__bg" />
+        <div className="address-page__loading">Loading...</div>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -122,7 +132,7 @@ const Cart = () => {
                 {/* Product Image */}
                 <button
                   className="cart-item__image"
-                  onClick={() => router.push(`/?variantId=${encodeURIComponent(item.id)}`)}
+                    onClick={() => router.push(`/?productId=${item.productRefId}&variantId=${encodeURIComponent(item.id)}`)}
                 >
                   <img src={item.image} alt={item.name} />
                 </button>
@@ -131,7 +141,7 @@ const Cart = () => {
                 <div className="cart-item__details">
                   <button
                     className="cart-item__name"
-                    onClick={() => router.push(`/?variantId=${encodeURIComponent(item.id)}`)}
+                      onClick={() => router.push(`/?productId=${item.productRefId}&variantId=${encodeURIComponent(item.id)}`)}
                     style={{ textAlign: "left", background: "transparent", border: "none", padding: 0 }}
                   >
                     {language === "ar" && item.nameAr ? item.nameAr : item.name}
@@ -180,6 +190,7 @@ const Cart = () => {
                 <div className="cart-item__qty">
                   <div className="cart-item__qty-select">
                     <span className="cart-item__qty-label">{t("qty")}: {item.quantity || 1}</span>
+                    <ChevronDown size={14} style={{ marginLeft: "8px", color: "#666" }} />
                     <select
                       value={item.quantity || 1}
                       onChange={(e) => updateQuantity(index, parseInt(e.target.value))}
@@ -274,7 +285,7 @@ const Cart = () => {
 
             <button
               className="cart-summary__checkout"
-              onClick={() => alert("Checkout flow coming soon!")}
+              onClick={() => router.push("/checkout/address")}
             >
               {t("checkout").toUpperCase()}
             </button>

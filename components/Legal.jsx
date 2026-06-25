@@ -30,7 +30,7 @@ export default function Legal() {
   }, [activePage, pathname, pathParts]);
 
   const renderHome = () => (
-    <div className="min-h-screen flex items-center justify-center bg-transparent px-4 relative">
+    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-transparent px-4 relative pt-16">
       <div className="fixed inset-0 -z-20">
         <div
           className="absolute inset-0"
@@ -51,7 +51,7 @@ export default function Legal() {
       <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center min-h-[60vh] gap-12 md:gap-24">
         {/* Left Side */}
         <div className="flex-1 flex justify-center md:justify-end">
-          <h1 className="text-5xl sm:text-6xl md:text-7xl title font-bold text-gray-900 tracking-tight">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl title font-normal text-gray-900 tracking-tight" style={{ fontFamily: "var(--font-brand)" }}>
             {t('legalities')}
           </h1>
         </div>
@@ -63,16 +63,16 @@ export default function Legal() {
 
         {/* Right Side */}
         <div className="flex-1 flex flex-col items-center md:items-start justify-center">
-          <button onClick={() => setActivePage('privacy')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
+          <button onClick={() => setActivePage('privacy')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('privacyPolicy')}
           </button>
-          <button onClick={() => setActivePage('terms')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
+          <button onClick={() => setActivePage('terms')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('termsConditions')}
           </button>
-          <button onClick={() => setActivePage('shipping')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
+          <button onClick={() => setActivePage('shipping')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('shippingPolicy')}
           </button>
-          <button onClick={() => setActivePage('returns')} className="text-xl sm:text-2xl font-semibold text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "'Google Sans Flex', sans-serif", marginBottom: '24px' }}>
+          <button onClick={() => setActivePage('returns')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('returnExchangePolicy')}
           </button>
         </div>
@@ -99,8 +99,8 @@ export default function Legal() {
         <span>{t('back')}</span>
       </button>
 
-      <div className="w-full mx-auto" style={{ fontFamily: "'Google Sans Flex', sans-serif", paddingLeft: '6%', paddingRight: '6%', maxWidth: '1400px' }}>
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-center" style={{ marginBottom: '80px' }}>
+      <div className="w-full mx-auto" style={{ fontFamily: "var(--font-body)", paddingLeft: '6%', paddingRight: '6%', maxWidth: '1400px' }}>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-normal text-gray-900 text-center" style={{ marginBottom: '80px', fontFamily: 'var(--font-brand)' }}>
           {title}
         </h1>
 
@@ -109,7 +109,7 @@ export default function Legal() {
             <div key={idx} id={`section-${idx}`} className="flex flex-col md:flex-row items-stretch">
               {/* Left Column (Topics) */}
               <div className="w-full md:w-48 lg:w-64 flex-shrink-0 mb-6 md:mb-0 py-8">
-                <a href={`#section-${idx}`} className="text-lg md:text-xl font-bold text-gray-900 hover:text-[#e11d48] transition-colors block">
+                <a href={`#section-${idx}`} className="text-lg md:text-xl font-semibold text-gray-900 hover:text-[#e11d48] transition-colors block" style={{ fontFamily: 'var(--font-heading)' }}>
                   {section.title}
                 </a>
               </div>
@@ -121,7 +121,7 @@ export default function Legal() {
               {/* Right Column (Content) */}
               <div className="flex-1 min-w-0 py-8">
                 <div className="text-gray-800 text-sm md:text-base leading-relaxed">
-                  <div className="[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-4 [&_li]:pl-2 [&_h4]:font-bold [&_h4]:text-lg [&_h4]:mb-4 [&_h4]:mt-8 space-y-8">
+                  <div className="[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-4 [&_li]:pl-2 [&_h4]:font-semibold [&_h4]:text-lg [&_h4]:mb-4 [&_h4]:mt-8 space-y-8">
                     {section.content}
                   </div>
                 </div>

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { onAuthStateChanged, onIdTokenChanged, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { app as defaultApp } from "@/lib/firebase";
-import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download } from "lucide-react";
+import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye } from "lucide-react";
 import { ref, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 
@@ -31,6 +31,7 @@ function emptyVariant(colorName = "Black", colorHex = "#111111") {
     colorName,
     colorHex,
     variantName: "",
+    semiDescription: "",
     description: "",
     priceINR: "",
     discountPriceINR: "",
@@ -144,6 +145,7 @@ function groupProducts(catalog) {
         colorName: c?.color_name || variant.color_name || "Default",
         colorHex: c?.color_hex || variant.color_hex || "#111111",
         variantName: c?.variant_name || "",
+        semiDescription: product.details?.variant_semi_descriptions?.[colorName] || "",
         description: c?.variant_description || "",
         priceINR: variant.price_inr,
         discountPriceINR: variant.discount_price_inr,
@@ -240,6 +242,9 @@ export default function AdminPage() {
   const [draft, setDraft] = useState(emptyDraft());
   const [isNewCategory, setIsNewCategory] = useState(false);
   const [uploadingKey, setUploadingKey] = useState("");
+  const [ordersList, setOrdersList] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -259,7 +264,7 @@ export default function AdminPage() {
   );
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(adminAuth, async (user) => {
+    const unsub = onIdTokenChanged(adminAuth, async (user) => {
       if (!user) {
         setAuthLoading(false);
         setIsAdmin(false);
@@ -400,6 +405,59 @@ export default function AdminPage() {
       loadQueries(idToken);
     }
   }, [isAdmin, activeTab, idToken]);
+
+  const loadOrders = async (token) => {
+    setOrdersLoading(true);
+    try {
+      const res = await fetch("/api/admin/orders", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const resData = await res.json();
+      if (resData.success && resData.orders) {
+        setOrdersList(resData.orders);
+      } else {
+        setOrdersList([]);
+      }
+    } catch (err) {
+      console.error("Failed to load orders:", err);
+      setOrdersList([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin && idToken && activeTab === "orders") {
+      loadOrders(idToken);
+    }
+  }, [isAdmin, activeTab, idToken]);
+
+  const handleExportOrders = () => {
+    if (ordersList.length === 0) return;
+    const headers = ["Order ID", "Date", "Customer Name", "Customer Contact", "Receiver Name", "Receiver Contact", "Shipping Address", "Billing Address", "Total Amount", "Status"];
+    const csvContent = [
+      headers.join(","),
+      ...ordersList.map((o) => {
+        const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "N/A";
+        const customerName = (o.billingAddress?.billingName || o.userName || "").replace(/"/g, '""');
+        const customerContact = (o.userPhone || o.billingAddress?.contactNumber || "").replace(/"/g, '""');
+        const receiverName = (o.shippingAddress?.receiverName || "").replace(/"/g, '""');
+        const receiverContact = (o.shippingAddress?.contactNumber || "").replace(/"/g, '""');
+        const shippingAddr = (o.shippingAddress?.formattedAddress || "").replace(/"/g, '""');
+        const billingAddr = (o.billingAddress?.formattedAddress || "").replace(/"/g, '""');
+        return `"${o.orderId || o.id}","${date}","${customerName}","${customerContact}","${receiverName}","${receiverContact}","${shippingAddr}","${billingAddr}","${o.amount || 0}","${o.status || "PENDING"}"`;
+      }),
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "orders.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -660,6 +718,13 @@ export default function AdminPage() {
           <Plus size={14} />
           Add New Product
         </button>
+        <button
+          className={`admin-sidebar__btn ${activeTab === "orders" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("orders")}
+        >
+          <Package size={14} />
+          Orders
+        </button>
         <div style={{ flexGrow: 1 }} />
         <button
           className="admin-sidebar__btn"
@@ -686,8 +751,8 @@ export default function AdminPage() {
                       <article key={entry.product.id} className="admin-product-card">
                         <div className="admin-product-card__head">
                           <div>
-                            <h4>{entry.product.name}</h4>
-                            <p className="admin-muted">{entry.variants.length} color variants</p>
+                            <h4>{entry.product.brand || "No Brand"}</h4>
+                            <p className="admin-muted">{entry.product.name} • {entry.variants.length} color variants</p>
                           </div>
                           <div className="admin-row">
                             <button className="admin-btn" onClick={() => startEdit(entry)}>Edit</button>
@@ -810,6 +875,96 @@ export default function AdminPage() {
                           >
                             <Trash2 size={16} />
                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === "orders" && (
+          <section>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+              <h1 className="admin-title" style={{ marginBottom: 0 }}>Orders</h1>
+              <button
+                onClick={handleExportOrders}
+                disabled={ordersList.length === 0}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 16px",
+                  background: ordersList.length === 0 ? "#ccc" : "#111",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: ordersList.length === 0 ? "not-allowed" : "pointer",
+                  fontSize: "14px",
+                  fontFamily: "'Google Sans Flex', sans-serif"
+                }}
+              >
+                <Download size={14} />
+                Export CSV
+              </button>
+            </div>
+            {ordersLoading ? (
+              <p className="admin-muted">Loading...</p>
+            ) : ordersList.length === 0 ? (
+              <p className="admin-muted">No orders found.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "8px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+                  <thead>
+                    <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Order ID</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Date</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Customer Name</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Customer Contact</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Receiver Name</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Receiver Contact</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Shipping Address</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Amount</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", fontSize: "13px" }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ordersList.map((o, i) => (
+                      <tr
+                        key={o.id}
+                        onClick={() => setSelectedOrder(o)}
+                        style={{
+                          borderBottom: "1px solid #e5e7eb",
+                          backgroundColor: i % 2 === 0 ? "white" : "#fcfcfc",
+                          cursor: "pointer",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f4ff"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = i % 2 === 0 ? "white" : "#fcfcfc"}
+                      >
+                        <td style={{ padding: "12px 16px", color: "#6b46c1", fontWeight: "600", fontSize: "13px", fontFamily: "monospace", whiteSpace: "nowrap" }}>{o.orderId || o.id}</td>
+                        <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px", whiteSpace: "nowrap" }}>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "N/A"}</td>
+                        <td style={{ padding: "12px 16px", color: "#111827", fontWeight: "500", fontSize: "13px" }}>{o.billingAddress?.billingName || o.userName || "N/A"}</td>
+                        <td style={{ padding: "12px 16px", color: "#374151", fontSize: "13px" }}>{o.userPhone || o.billingAddress?.contactNumber || "N/A"}</td>
+                        <td style={{ padding: "12px 16px", color: "#111827", fontWeight: "500", fontSize: "13px" }}>{o.shippingAddress?.receiverName || "N/A"}</td>
+                        <td style={{ padding: "12px 16px", color: "#374151", fontSize: "13px" }}>{o.shippingAddress?.contactNumber || "N/A"}</td>
+                        <td style={{ padding: "12px 16px", color: "#4b5563", fontSize: "13px", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.shippingAddress?.formattedAddress || "N/A"}</td>
+                        <td style={{ padding: "12px 16px", color: "#111827", fontWeight: "600", fontSize: "13px" }}>₹{(o.amount || 0).toLocaleString()}</td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <span style={{
+                            padding: "3px 10px",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            fontWeight: "600",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            background: o.status === "SUCCESS" ? "#dcfce7" : o.status === "FAILED" ? "#fee2e2" : "#fef9c3",
+                            color: o.status === "SUCCESS" ? "#166534" : o.status === "FAILED" ? "#991b1b" : "#854d0e"
+                          }}>
+                            {o.status || "PENDING"}
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -1042,6 +1197,19 @@ export default function AdminPage() {
                       />
                     </label>
                     <label>
+                      Semi Description
+                      <input
+                        value={variant.semiDescription || ""}
+                        onChange={(e) =>
+                          setDraft((prev) => {
+                            const next = structuredClone(prev);
+                            next.variants[variantIndex].semiDescription = e.target.value;
+                            return next;
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         Color Hex
                         <div 
@@ -1230,6 +1398,69 @@ export default function AdminPage() {
           </section>
         )}
       </main>
+
+      {/* Order Detail Popup */}
+      {selectedOrder && (
+        <div className="admin-order-modal">
+          <div className="admin-order-modal__overlay" onClick={() => setSelectedOrder(null)} />
+          <div className="admin-order-modal__content">
+            <div className="admin-order-modal__header">
+              <h2>Order Details — {selectedOrder.orderId || selectedOrder.id}</h2>
+              <button onClick={() => setSelectedOrder(null)}><X size={20} /></button>
+            </div>
+            <div className="admin-order-modal__body">
+              <div className="admin-order-modal__grid">
+                <div className="admin-order-modal__section">
+                  <h4>Billing Details</h4>
+                  <p><strong>Name:</strong> {selectedOrder.billingAddress?.billingName || selectedOrder.userName || "N/A"}</p>
+                  <p><strong>Contact:</strong> {selectedOrder.userPhone || selectedOrder.billingAddress?.contactNumber || "N/A"}</p>
+                  <p><strong>Email:</strong> {selectedOrder.userEmail || "N/A"}</p>
+                  <p><strong>Address:</strong> {selectedOrder.billingAddress?.formattedAddress || "N/A"}</p>
+                </div>
+                <div className="admin-order-modal__section">
+                  <h4>Shipping Details</h4>
+                  <p><strong>Receiver:</strong> {selectedOrder.shippingAddress?.receiverName || "N/A"}</p>
+                  <p><strong>Contact:</strong> {selectedOrder.shippingAddress?.contactNumber || "N/A"}</p>
+                  <p><strong>Address:</strong> {selectedOrder.shippingAddress?.formattedAddress || "N/A"}</p>
+                </div>
+              </div>
+              <div className="admin-order-modal__section" style={{ marginTop: "16px" }}>
+                <h4>Order Items</h4>
+                <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "8px" }}>
+                  <thead>
+                    <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
+                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Product</th>
+                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Size</th>
+                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Qty</th>
+                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(selectedOrder.cartItems || []).map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                        <td style={{ padding: "8px 12px", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+                          {item.image && <img src={item.image} alt="" style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px" }} />}
+                          {item.name}
+                        </td>
+                        <td style={{ padding: "8px 12px", fontSize: "13px" }}>{item.size}</td>
+                        <td style={{ padding: "8px 12px", fontSize: "13px" }}>{item.quantity || 1}</td>
+                        <td style={{ padding: "8px 12px", fontSize: "13px" }}>₹{(item.price * (item.quantity || 1)).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="admin-order-modal__section" style={{ marginTop: "16px" }}>
+                <h4>Payment Info</h4>
+                <p><strong>Total:</strong> ₹{(selectedOrder.amount || 0).toLocaleString()}</p>
+                <p><strong>Status:</strong> <span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: "600", background: selectedOrder.status === "SUCCESS" ? "#dcfce7" : selectedOrder.status === "FAILED" ? "#fee2e2" : "#fef9c3", color: selectedOrder.status === "SUCCESS" ? "#166534" : selectedOrder.status === "FAILED" ? "#991b1b" : "#854d0e" }}>{selectedOrder.status || "PENDING"}</span></p>
+                <p><strong>Method:</strong> {selectedOrder.paymentMethod || "PhonePe"}</p>
+                <p><strong>Date:</strong> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "N/A"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

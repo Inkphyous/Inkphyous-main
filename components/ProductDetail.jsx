@@ -66,11 +66,11 @@ const SizeChartContent = () => (
       <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
         <thead>
           <tr>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>Size</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>S</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>M</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>L</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>XL</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>Size</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>S</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>M</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>L</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>XL</th>
           </tr>
         </thead>
         <tbody>
@@ -191,8 +191,8 @@ export default function ProductDetail() {
       );
       initialDist.current = dist;
       initialScale.current = zoomLevel;
-    } else if (e.touches.length === 1 && zoomLevel > 1) {
-      lastTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if (e.touches.length === 1) {
+      lastTouch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
     }
   }, [zoomLevel]);
 
@@ -229,20 +229,37 @@ export default function ProductDetail() {
       
       if (e.changedTouches.length === 1) {
         const now = Date.now();
-        if (now - lastTap.current < 300) {
-          if (zoomLevel > 1) {
-            setZoomLevel(1);
-            setPanPosition({ x: 0, y: 0 });
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const dx = endX - lastTouch.current.x;
+        const dy = endY - lastTouch.current.y;
+        const timeDiff = now - (lastTouch.current.time || now);
+
+        if (zoomLevel === 1 && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) && timeDiff < 400) {
+          if (dx > 0) {
+            setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
           } else {
-            setZoomLevel(2.5);
+            setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
           }
-          lastTap.current = 0;
-        } else {
-          lastTap.current = now;
+          return;
+        }
+
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+          if (now - lastTap.current < 300) {
+            if (zoomLevel > 1) {
+              setZoomLevel(1);
+              setPanPosition({ x: 0, y: 0 });
+            } else {
+              setZoomLevel(2.5);
+            }
+            lastTap.current = 0;
+          } else {
+            lastTap.current = now;
+          }
         }
       }
     }
-  }, [zoomLevel]);
+  }, [zoomLevel, galleryImages.length]);
 
   const handleScroll = useCallback(() => {
     const el = overlayRef.current;
@@ -294,6 +311,11 @@ export default function ProductDetail() {
         }
       }
 
+      const dotsEl = document.querySelector(".mobile-dots");
+      if (dotsEl) {
+        dotsEl.style.opacity = `${Math.max(0, 1 - progress * 5)}`;
+      }
+
       const footerEl = document.getElementById("global-footer");
       if (footerEl) {
         if (el.scrollTop + el.clientHeight >= el.scrollHeight - 50) {
@@ -325,6 +347,11 @@ export default function ProductDetail() {
           stage.style.filter = "";
           stage.style.opacity = "";
           stage.style.transition = "";
+        }
+
+        const dotsEl = document.querySelector(".mobile-dots");
+        if (dotsEl) {
+          dotsEl.style.opacity = "";
         }
       }
       
@@ -490,7 +517,7 @@ export default function ProductDetail() {
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex(null); }}>
                   <X size={24} strokeWidth={2} style={{ pointerEvents: "none" }} />
                 </button>
-                {galleryImages.length > 1 && zoomLevel === 1 && (
+                {galleryImages.length > 1 && zoomLevel === 1 && !isMobile && (
                   <button className="pdp-lightbox__arrow pdp-lightbox__arrow--left"
                     style={{ zIndex: 99999, pointerEvents: "auto" }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1)); }}>
@@ -509,7 +536,7 @@ export default function ProductDetail() {
                   style={{ zIndex: 1000, touchAction: "none" }}>
                   <img src={galleryImages[lightboxIndex]} alt={`${product.name} view ${lightboxIndex + 1}`} className="pdp-lightbox__image" style={{ pointerEvents: "none" }} />
                 </motion.div>
-                {galleryImages.length > 1 && zoomLevel === 1 && (
+                {galleryImages.length > 1 && zoomLevel === 1 && !isMobile && (
                   <button className="pdp-lightbox__arrow pdp-lightbox__arrow--right"
                     style={{ zIndex: 99999, pointerEvents: "auto" }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0)); }}>
@@ -571,7 +598,7 @@ export default function ProductDetail() {
                   exit={{ y: -20, opacity: 0 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <h1 className="pdp-overlay__brand">{product.brand}</h1>
+                  <h1 className="pdp-overlay__brand">{variant.name || product.brand}</h1>
                   <span className="pdp-overlay__category">{t(product.category.toLowerCase())}</span>
                 </motion.div>
               </AnimatePresence>
@@ -585,7 +612,7 @@ export default function ProductDetail() {
                   transition={{ duration: 0.25 }}
                   style={{ margin: "4px 0 0 0" }}
                 >
-                  {variant.name}
+                  {variant.semiDescription || variant.name}
                 </motion.p>
               </AnimatePresence>
             </div>
@@ -619,10 +646,10 @@ export default function ProductDetail() {
             >
                   <div className="pdp-overlay__mobile-header">
                     <div className="pdp-overlay__mobile-brand-row">
-                      <h1 className="pdp-overlay__brand">{product.brand}</h1>
+                      <h1 className="pdp-overlay__brand">{variant.name || product.brand}</h1>
                       <span className="pdp-overlay__category">{t(product.category.toLowerCase())}</span>
                     </div>
-                    <p className="pdp-overlay__variant">{variant.name}</p>
+                    <p className="pdp-overlay__variant">{variant.semiDescription || variant.name}</p>
                   </div>
 
                   <div className="pdp-overlay__selection-block">
@@ -691,8 +718,13 @@ export default function ProductDetail() {
 
                   <Accordion title={t("details")} content={language === "ar" && product.detailsAr ? product.detailsAr : product.details}
                     isOpen={activeAccordion === "details"} onClick={() => setActiveAccordion(activeAccordion === "details" ? null : "details")} />
-                  <Accordion title="Free Delivery and Returns" content="Standard processing time for orders is up to 24 hours, with delivery typically completed within 3–5 business days after dispatch."
-                    isOpen={activeAccordion === "delivery"} onClick={() => setActiveAccordion(activeAccordion === "delivery" ? null : "delivery")} />
+                  <Accordion title="Shipping Policy" content={
+                    <ul style={{ paddingLeft: "20px", margin: 0, listStyleType: "disc" }}>
+                      <li style={{ marginBottom: "8px" }}>Standard processing time for orders is up to 24 hours, with delivery typically completed within 5-7 business days after dispatch.</li>
+                      <li>Read our full Shipping Policy for more details <Link href="/legal/shipping" style={{ color: "var(--color-primary, #e11d48)", textDecoration: "underline" }}>here</Link>.</li>
+                    </ul>
+                  }
+                    isOpen={activeAccordion === "shipping"} onClick={() => setActiveAccordion(activeAccordion === "shipping" ? null : "shipping")} />
                   <Accordion title="Size Chart" content={<SizeChartContent />}
                     isOpen={activeAccordion === "size-chart"} onClick={() => setActiveAccordion(activeAccordion === "size-chart" ? null : "size-chart")} />
 

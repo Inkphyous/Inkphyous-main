@@ -41,7 +41,7 @@ function mapServerCartItems(items = []) {
 }
 
 export function StoreProvider({ children }) {
-  const [products, setProducts] = useState(() => buildProductsFromLocal());
+  const [products, setProducts] = useState([]);
   const [catalogSource, setCatalogSource] = useState("local-fallback");
   const [productsLoading, setProductsLoading] = useState(true);
 
@@ -64,6 +64,7 @@ export function StoreProvider({ children }) {
   const activeCategory = activeCategoryState;
 
   const [cartItems, setCartItems] = useState([]);
+  const [cartLoading, setCartLoading] = useState(true);
   const [lastAddedItem, setLastAddedItem] = useState(null);
   const [wishlistItems, setWishlistItems] = useState([]);
 
@@ -260,7 +261,11 @@ export function StoreProvider({ children }) {
   }, [products, viewMode, pdpProductId]);
 
   const syncCartFromServer = useCallback(async (userId) => {
-    if (!userId) return;
+    if (!userId) {
+      setCartLoading(false);
+      return;
+    }
+    setCartLoading(true);
     try {
       const response = await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
         cache: "no-store",
@@ -270,6 +275,8 @@ export function StoreProvider({ children }) {
       setCartItems(mapServerCartItems(data.items || []));
     } catch {
       // Keep current state on failure.
+    } finally {
+      setCartLoading(false);
     }
   }, []);
 
@@ -304,6 +311,7 @@ export function StoreProvider({ children }) {
         setUserData(null);
         setCartItems([]);
         setWishlistItems([]);
+        setCartLoading(false);
         if (dbUnsubscribe) {
           dbUnsubscribe();
           dbUnsubscribe = null;
@@ -563,6 +571,7 @@ export function StoreProvider({ children }) {
     setPdpCategoryVacantLeft,
 
     cartItems,
+    cartLoading,
     addToCart,
     removeFromCart,
     updateQuantity,

@@ -1,6 +1,4 @@
-import { Suspense } from "react";
-import Checkout from "@/components/Checkout";
-import Footer from "@/components/Footer";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Checkout | INKPHYOUS",
@@ -8,10 +6,5 @@ export const metadata = {
 };
 
 export default function CheckoutPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center pt-32">Loading checkout...</div>}>
-      <Checkout />
-      <Footer />
-    </Suspense>
-  );
+  redirect("/checkout/address");
 }

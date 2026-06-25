@@ -8,55 +8,31 @@ import { db } from "@/lib/firebase";
 import { ref, push, serverTimestamp } from "firebase/database";
 
 const FloatingInput = ({ value, onChange, placeholder, type = "text" }) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const isActive = isFocused || value.trim() !== "";
-  
   return (
     <div style={{ position: "relative", width: "100%", height: "45px" }}>
       <input
         type={type}
         value={value}
         onChange={onChange}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        placeholder={placeholder}
         style={{
           width: "100%",
           height: "100%",
           border: "1px solid #d1d5db",
-          padding: isActive ? "18px 16px 4px" : "0 16px",
+          padding: "0 16px",
           fontSize: "12px",
           fontFamily: "var(--font-body)",
           color: "#000",
           outline: "none",
           backgroundColor: "transparent",
-          margin: 0,
-          transition: "padding 0.2s ease"
+          margin: 0
         }}
       />
-      <label
-        style={{
-          position: "absolute",
-          left: "16px",
-          top: isActive ? "8px" : "50%",
-          transform: isActive ? "none" : "translateY(-50%)",
-          fontSize: isActive ? "9px" : "12px",
-          color: isActive ? "#999" : "#a0a0a0",
-          pointerEvents: "none",
-          transition: "all 0.2s ease",
-          fontFamily: "var(--font-heading)",
-          letterSpacing: "1px",
-          fontWeight: "bold",
-          textTransform: "uppercase"
-        }}
-      >
-        {placeholder}
-      </label>
     </div>
   );
 };
 
 const FloatingDropdown = ({ value, onClick, isOpen, subjects, onSelect, placeholder }) => {
-  const isActive = true; // Dropdown always has a value or default active state
   return (
     <div style={{ position: "relative", width: "100%", height: "45px" }}>
       <div
@@ -65,9 +41,9 @@ const FloatingDropdown = ({ value, onClick, isOpen, subjects, onSelect, placehol
           width: "100%",
           height: "100%",
           border: "1px solid #d1d5db",
-          padding: isActive ? "18px 16px 4px" : "0 16px",
+          padding: "0 16px",
           fontSize: "12px",
-          fontFamily: "var(--font-heading)",
+          fontFamily: "var(--font-body)",
           color: "#000",
           outline: "none",
           backgroundColor: "transparent",
@@ -76,31 +52,13 @@ const FloatingDropdown = ({ value, onClick, isOpen, subjects, onSelect, placehol
           alignItems: "center",
           justifyContent: "space-between",
           cursor: "pointer",
-          fontWeight: "bold",
+          fontWeight: "normal",
           letterSpacing: "1px"
         }}
       >
-        <span style={{ color: value ? "#000" : "#9ca3af" }}>{value || "GENERAL INQUIRY"}</span>
+        <span style={{ color: value ? "#000" : "#9ca3af" }}>{value || placeholder}</span>
         <ChevronDown style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} size={16} />
       </div>
-      <label
-        style={{
-          position: "absolute",
-          left: "16px",
-          top: isActive ? "8px" : "50%",
-          transform: isActive ? "none" : "translateY(-50%)",
-          fontSize: isActive ? "9px" : "12px",
-          color: isActive ? "#999" : "#a0a0a0",
-          pointerEvents: "none",
-          transition: "all 0.2s ease",
-          fontFamily: "var(--font-heading)",
-          letterSpacing: "1px",
-          fontWeight: "bold",
-          textTransform: "uppercase"
-        }}
-      >
-        {placeholder}
-      </label>
       
       {isOpen && (
         <div style={{ position: "absolute", zIndex: 20, width: "100%", background: "#fff", border: "1px solid #d1d5db", borderTop: "none", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)", maxHeight: "240px", overflowY: "auto" }}>
@@ -108,7 +66,7 @@ const FloatingDropdown = ({ value, onClick, isOpen, subjects, onSelect, placehol
             <div
               key={idx}
               onClick={() => onSelect(sub)}
-              style={{ padding: "12px 16px", fontSize: "12px", fontWeight: "bold", letterSpacing: "1px", fontFamily: "var(--font-heading)", cursor: "pointer", color: "#000", borderBottom: idx !== subjects.length - 1 ? "1px solid #f3f4f6" : "none" }}
+              style={{ padding: "12px 16px", fontSize: "12px", fontWeight: "normal", letterSpacing: "1px", fontFamily: "var(--font-body)", cursor: "pointer", color: "#000", borderBottom: idx !== subjects.length - 1 ? "1px solid #f3f4f6" : "none" }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3f4f6"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
             >
@@ -122,48 +80,26 @@ const FloatingDropdown = ({ value, onClick, isOpen, subjects, onSelect, placehol
 };
 
 const FloatingTextarea = ({ value, onChange, placeholder }) => {
-  const [isFocused, setIsFocused] = useState(false);
-  const isActive = isFocused || value.trim() !== "";
-  
   return (
     <div style={{ position: "relative", width: "100%", height: "150px" }}>
       <textarea
         value={value}
         onChange={onChange}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        placeholder={placeholder}
         style={{
           width: "100%",
           height: "100%",
           border: "1px solid #d1d5db",
-          padding: isActive ? "24px 16px 14px" : "14px 16px",
+          padding: "14px 16px",
           fontSize: "12px",
           fontFamily: "var(--font-body)",
           color: "#000",
           outline: "none",
           resize: "none",
           backgroundColor: "transparent",
-          margin: 0,
-          transition: "padding 0.2s ease"
+          margin: 0
         }}
       />
-      <label
-        style={{
-          position: "absolute",
-          left: "16px",
-          top: isActive ? "8px" : "14px",
-          fontSize: isActive ? "9px" : "12px",
-          color: isActive ? "#999" : "#a0a0a0",
-          pointerEvents: "none",
-          transition: "all 0.2s ease",
-          fontFamily: "var(--font-heading)",
-          letterSpacing: "1px",
-          fontWeight: "bold",
-          textTransform: "uppercase"
-        }}
-      >
-        {placeholder}
-      </label>
     </div>
   );
 };
@@ -261,7 +197,7 @@ const ContactUs = () => {
 
   const labelStyle = {
     fontSize: "11px",
-    fontWeight: "bold",
+    fontWeight: "500",
     letterSpacing: isMobile ? "1px" : "2px",
     fontFamily: "var(--font-heading)",
     color: "#000",
@@ -290,10 +226,10 @@ const ContactUs = () => {
         <div style={{ marginBottom: "60px" }}>
           <h1 style={{ fontSize: "36px", letterSpacing: "4px", marginBottom: "40px", fontFamily: "var(--font-brand)", fontWeight: "normal", color: "#000" }}>CONTACT</h1>
           
-          <h2 style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "bold", marginBottom: "8px", fontFamily: "var(--font-heading)", color: "#000" }}>ENQUIRIES</h2>
+          <h2 style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "500", marginBottom: "8px", fontFamily: "var(--font-heading)", color: "#000" }}>ENQUIRIES</h2>
           <a href="mailto:info@inkphyous.com" style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "normal", marginBottom: "40px", fontFamily: "var(--font-heading)", color: "#e11d48", textDecoration: "none", display: "inline-block" }}>INFO@INKPHYOUS.COM</a>
           
-          <h2 style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "bold", marginBottom: "16px", fontFamily: "var(--font-heading)", color: "#000" }}>SEND US A MESSAGE</h2>
+          <h2 style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "normal", marginBottom: "16px", fontFamily: "var(--font-heading)", color: "#000" }}>SEND US A MESSAGE</h2>
           <p style={{ fontSize: "13px", lineHeight: "1.6", color: "#333", fontFamily: "var(--font-body)", maxWidth: "800px" }}>
             If you have any questions about your order or need further assistance, you can always contact us at <a href="mailto:info@inkphyous.com" style={{ color: "#e11d48", textDecoration: "none", fontWeight: "normal" }}>info@inkphyous.com</a>. Alternatively, please complete the form by selecting a subject and entering your question or comment. Our Customer Service team will review your message and respond as soon as possible.
           </p>
@@ -355,7 +291,7 @@ const ContactUs = () => {
                 color: !isFilled ? (isHovered ? "#e11d48" : "#000") : "#fff",
                 border: !isFilled ? (isHovered ? "1px solid #e11d48" : "1px solid #000") : (isHovered ? "1px solid #e11d48" : "1px solid #000"),
                 fontSize: "11px",
-                fontWeight: "bold",
+                fontWeight: "600",
                 letterSpacing: "2px",
                 fontFamily: "var(--font-heading)",
                 textTransform: "uppercase",

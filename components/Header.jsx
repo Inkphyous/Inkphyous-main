@@ -157,10 +157,28 @@ export default function Header() {
                         WISHLIST
                       </button>
                       <button 
+                        onClick={() => {
+                          router.push("/addresses");
+                          setProfileDropdownOpen(false);
+                        }} 
+                        style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
+                      >
+                        SAVED ADDRESSES
+                      </button>
+                      <button 
                         onClick={() => { setEditProfilePopupOpen(true); setProfileDropdownOpen(false); }} 
                         style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
                       >
                         {t("editProfile")}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          router.push("/orders");
+                          setProfileDropdownOpen(false);
+                        }} 
+                        style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
+                      >
+                        MY ORDERS
                       </button>
                       <button 
                         onClick={() => { logout(); setProfileDropdownOpen(false); }} 
@@ -236,6 +254,18 @@ export default function Header() {
                     WISHLIST
                   </button>
 
+                  {user && (
+                    <button
+                      onClick={() => {
+                        router.push("/addresses");
+                        setMenuOpen(false);
+                      }}
+                      style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
+                    >
+                      SAVED ADDRESSES
+                    </button>
+                  )}
+
                   {user ? (
                     <button
                       onClick={() => {
@@ -265,6 +295,18 @@ export default function Header() {
                       <button onClick={() => { setLanguage("ar"); setMenuOpen(false); }}>AR</button>
                     </div>
                   </div>
+
+                  {user && (
+                    <button
+                      onClick={() => {
+                        router.push("/orders");
+                        setMenuOpen(false);
+                      }}
+                      style={{ padding: "8px 12px", textAlign: "left", fontSize: "12px", width: "100%" }}
+                    >
+                      MY ORDERS
+                    </button>
+                  )}
 
                   {user && (
                     <button

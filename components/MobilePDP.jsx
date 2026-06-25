@@ -14,7 +14,7 @@ import { useStore } from "./providers/StoreProvider";
 
 function MobileAccordion({ title, content, isOpen, onClick }) {
   return (
-    <div style={{ borderBottom: "1px solid #e5e5e5" }}>
+    <div style={{ borderTop: "1px solid #e11d48" }}>
       <button
         onClick={onClick}
         style={{
@@ -99,11 +99,11 @@ const SizeChartContent = () => (
       <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
         <thead>
           <tr>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>Size</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>S</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>M</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>L</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "600", backgroundColor: "#f9f9f9" }}>XL</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>Size</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>S</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>M</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>L</th>
+            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>XL</th>
           </tr>
         </thead>
         <tbody>
@@ -156,7 +156,16 @@ export default function MobilePDP({
 
   return (
     <div style={{ width: "100%" }}>
-      {/* Brand + Variant name + Price + Swatches */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
+          minHeight: "calc(100svh - 62vh - 20px)",
+        }}
+      >
+        <div>
+          {/* Brand + Variant name + Price + Swatches */}
       <div style={{ marginBottom: "12px" }}>
         {/* Row 1: Brand/Category & Price */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
@@ -173,7 +182,7 @@ export default function MobilePDP({
                 lineHeight: 1,
               }}
             >
-              {product.brand}
+              {variant.name || product.brand}
             </h1>
             <span
               style={{
@@ -211,12 +220,11 @@ export default function MobilePDP({
               fontSize: "18px",
               fontWeight: 400,
               letterSpacing: "1px",
-              textTransform: "uppercase",
               color: "var(--color-text)",
               margin: 0,
             }}
           >
-            {variant.name}
+            {variant.semiDescription || variant.name}
           </p>
           <div
             style={{
@@ -247,16 +255,18 @@ export default function MobilePDP({
             ))}
           </div>
         </div>
+        </div>
       </div>
 
-      {/* ---- SIZES (right-aligned) ---- */}
+      <div style={{ width: "100%" }}>
+          {/* ---- SIZES (left-aligned) ---- */}
       <div
         style={{
           display: "flex",
           flexDirection: "row",
           flexWrap: "wrap",
           gap: "8px",
-          justifyContent: "flex-end",
+          justifyContent: "flex-start",
           width: "100%",
           marginBottom: "14px",
         }}
@@ -390,6 +400,8 @@ export default function MobilePDP({
           <Share2 size={16} />
         </motion.div>
       </div>
+        </div>
+      </div>
 
       {/* Description */}
       <div
@@ -473,12 +485,17 @@ export default function MobilePDP({
         }
       />
       <MobileAccordion
-        title="Free Delivery and Returns"
-        content="Standard processing time for orders is up to 24 hours, with delivery typically completed within 3–5 business days after dispatch."
-        isOpen={activeAccordion === "delivery"}
+        title="Shipping Policy"
+        content={
+          <ul style={{ paddingLeft: "16px", margin: 0, listStyleType: "disc" }}>
+            <li style={{ marginBottom: "6px" }}>Standard processing time for orders is up to 24 hours, with delivery typically completed within 5-7 business days after dispatch.</li>
+            <li>Read our full Shipping Policy for more details <Link href="/legal/shipping" style={{ color: "var(--color-primary, #e11d48)", textDecoration: "underline" }}>here</Link>.</li>
+          </ul>
+        }
+        isOpen={activeAccordion === "shipping"}
         onClick={() =>
           setActiveAccordion(
-            activeAccordion === "delivery" ? null : "delivery"
+            activeAccordion === "shipping" ? null : "shipping"
           )
         }
       />
