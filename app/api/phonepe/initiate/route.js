@@ -62,7 +62,7 @@ export async function POST(request) {
     if (!CLIENT_ID || !CLIENT_SECRET) {
       return NextResponse.json(
         { success: false, error: "Payment gateway not configured. Please set PHONEPE_MERCHANT_ID and PHONEPE_SALT_KEY." },
-        { status: 500 }
+        { status: 400 }
       );
     }
 
@@ -169,7 +169,7 @@ export async function POST(request) {
     console.error("PhonePe initiate error:", error);
     return NextResponse.json(
       { success: false, error: error.message || "Internal server error", stack: error.stack },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }
