@@ -29,5 +29,8 @@
   },
   "devDependencies": {
     "eslint": "^10.4.0"
+  },
+  "overrides": {
+    "jose": "4.15.9"
   }
 }
