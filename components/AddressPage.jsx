@@ -153,7 +153,13 @@ export default function AddressPage() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server returned non-JSON response. Status: ${response.status}. Body: ${responseText.slice(0, 150)}... Please check Vercel Function Logs.`);
+      }
 
       if (data.success && data.redirectUrl) {
         // Store transaction ID for status page
