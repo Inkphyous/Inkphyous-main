@@ -110,6 +110,10 @@ export async function POST(request) {
     // Get OAuth Token
     const accessToken = await getPhonePeAccessToken();
 
+    const baseUrl = request.nextUrl.origin;
+    const dynamicRedirectUrl = `${baseUrl}/checkout/payment-status`;
+    const dynamicCallbackUrl = `${baseUrl}/api/phonepe/callback`;
+
     // V2 Payload
     const payload = {
       merchantOrderId: merchantTransactionId,
@@ -118,8 +122,8 @@ export async function POST(request) {
         type: "PG_CHECKOUT",
         message: "Payment for Inkphyous order",
         merchantUrls: {
-          redirectUrl: `${REDIRECT_URL}?transactionId=${merchantTransactionId}`,
-          callbackUrl: CALLBACK_URL
+          redirectUrl: `${dynamicRedirectUrl}?transactionId=${merchantTransactionId}`,
+          callbackUrl: dynamicCallbackUrl
         }
       }
     };
