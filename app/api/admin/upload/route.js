@@ -57,3 +57,37 @@ export async function POST(request) {
     return jsonError(error.message || "Failed to upload file.", 500);
   }
 }
+
+export async function DELETE(request) {
+  if (!hasSupabaseAdminEnv()) return jsonError("Supabase env vars are not configured.", 500);
+  const adminEmail = await getAuthorizedAdminEmail(request);
+  if (!adminEmail) return jsonError("Unauthorized", 401);
+
+  try {
+    const { urls } = await request.json();
+    if (!urls || !Array.isArray(urls)) return jsonError("urls array is required.", 400);
+
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET || "product-images";
+    const supabase = getSupabaseAdmin();
+    
+    const paths = urls.map(url => {
+      try {
+        const urlObj = new URL(url);
+        const prefix = `/storage/v1/object/public/${bucket}/`;
+        if (urlObj.pathname.includes(prefix)) {
+          return urlObj.pathname.split(prefix)[1];
+        }
+        return null;
+      } catch (e) { return null; }
+    }).filter(Boolean);
+
+    if (paths.length > 0) {
+      const { error } = await supabase.storage.from(bucket).remove(paths);
+      if (error) throw new Error(error.message);
+    }
+
+    return NextResponse.json({ success: true, deleted: paths.length });
+  } catch (error) {
+    return jsonError(error.message || "Failed to delete files.", 500);
+  }
+}

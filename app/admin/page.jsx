@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, onIdTokenChanged, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { app as defaultApp } from "@/lib/firebase";
-import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye } from "lucide-react";
+import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye, CheckCircle } from "lucide-react";
 import { ref, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 
@@ -167,6 +167,7 @@ function groupProducts(catalog) {
 
 function ColorEditor({ value, onChange, colors }) {
   const [refObj, setRefObj] = useState(null);
+  const [formatState, setFormatState] = useState({ bold: false, italic: false, color: "" });
 
   useEffect(() => {
     if (refObj && value !== refObj.innerHTML) {
@@ -174,17 +175,42 @@ function ColorEditor({ value, onChange, colors }) {
     }
   }, [value, refObj]);
 
+  const updateFormatState = () => {
+    if (!refObj) return;
+    const isBold = document.queryCommandState("bold");
+    const isItalic = document.queryCommandState("italic");
+    const color = document.queryCommandValue("foreColor");
+    
+    let hexColor = "";
+    if (color && color.startsWith("rgb")) {
+      const rgb = color.match(/\d+/g);
+      if (rgb && rgb.length === 3) {
+        hexColor = "#" + rgb.map(x => parseInt(x).toString(16).padStart(2, "0")).join("");
+      }
+    } else {
+      hexColor = color;
+    }
+
+    setFormatState({
+      bold: isBold,
+      italic: isItalic,
+      color: hexColor,
+    });
+  };
+
   const applyColor = (hex) => {
     document.execCommand("styleWithCSS", false, true);
     document.execCommand("foreColor", false, hex);
     if (refObj) refObj.focus();
     if (refObj) onChange(refObj.innerHTML);
+    updateFormatState();
   };
 
   const applyFormat = (command) => {
     document.execCommand(command, false, null);
     if (refObj) refObj.focus();
     if (refObj) onChange(refObj.innerHTML);
+    updateFormatState();
   };
 
   return (
@@ -193,7 +219,7 @@ function ColorEditor({ value, onChange, colors }) {
          <button
            type="button"
            onClick={(e) => { e.preventDefault(); applyFormat("bold"); }}
-           style={{ width: "24px", height: "24px", background: "#fff", border: "1px solid #d1d5db", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", padding: 0 }}
+           style={{ width: "24px", height: "24px", background: "#fff", border: formatState.bold ? "2px solid #000" : "1px solid #d1d5db", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", padding: 0 }}
            title="Bold"
          >
            B
@@ -201,26 +227,33 @@ function ColorEditor({ value, onChange, colors }) {
          <button
            type="button"
            onClick={(e) => { e.preventDefault(); applyFormat("italic"); }}
-           style={{ width: "24px", height: "24px", background: "#fff", border: "1px solid #d1d5db", borderRadius: "4px", cursor: "pointer", fontStyle: "italic", padding: 0 }}
+           style={{ width: "24px", height: "24px", background: "#fff", border: formatState.italic ? "2px solid #000" : "1px solid #d1d5db", borderRadius: "4px", cursor: "pointer", fontStyle: "italic", padding: 0 }}
            title="Italic"
          >
            I
          </button>
          <div style={{ width: "1px", height: "16px", background: "#ccc", margin: "0 4px" }} />
-         {colors.map(c => (
-           <button 
-             key={c.hex} 
-             type="button" 
-             onClick={(e) => { e.preventDefault(); applyColor(c.hex); }}
-             style={{ width: "24px", height: "24px", background: c.hex, border: "1px solid #d1d5db", borderRadius: "50%", cursor: "pointer", padding: 0 }}
-             title={c.name}
-           />
-         ))}
+         {colors.map(c => {
+           // Basic comparison (document.queryCommandValue might return uppercase hex)
+           const isActive = formatState.color && formatState.color.toLowerCase() === c.hex.toLowerCase();
+           return (
+             <button 
+               key={c.hex} 
+               type="button" 
+               onClick={(e) => { e.preventDefault(); applyColor(c.hex); }}
+               style={{ width: "24px", height: "24px", background: c.hex, border: isActive ? "2px solid #000" : "1px solid #d1d5db", borderRadius: "50%", cursor: "pointer", padding: 0 }}
+               title={c.name}
+             />
+           );
+         })}
       </div>
       <div 
         ref={setRefObj}
         contentEditable
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
+        onKeyUp={updateFormatState}
+        onMouseUp={updateFormatState}
+        onFocus={updateFormatState}
         style={{ padding: "12px", minHeight: "120px", outline: "none", fontSize: "14px", fontFamily: "inherit", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
       />
     </div>
@@ -245,6 +278,11 @@ export default function AdminPage() {
   const [ordersList, setOrdersList] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderSubTab, setOrderSubTab] = useState("successful");
+  const [pendingUploads, setPendingUploads] = useState({});
+  const [deletedImages, setDeletedImages] = useState([]);
+  const [saveStatus, setSaveStatus] = useState("");
+  const [compressingKey, setCompressingKey] = useState("");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -459,6 +497,28 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
+  const handleMarkSuccess = async (orderId) => {
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ orderId, status: "SUCCESS" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrdersList(prev => prev.map(o => o.id === orderId || o.orderId === orderId ? { ...o, status: "SUCCESS" } : o));
+        setSelectedOrder(prev => prev && (prev.id === orderId || prev.orderId === orderId) ? { ...prev, status: "SUCCESS" } : prev);
+      } else {
+        alert(data.error || "Failed to update order");
+      }
+    } catch (e) {
+      alert("Error updating order status");
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError("");
@@ -520,44 +580,129 @@ export default function AdminPage() {
     setActiveTab("add");
   };
 
+  const compressToWebP = (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          if (!blob) return reject(new Error("Compression failed"));
+          resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", { type: "image/webp" }));
+        }, "image/webp", 0.85);
+      };
+      img.onerror = (err) => reject(err);
+    });
+  };
+
   const handleUpload = async (file, folder, variantIndex, isMain) => {
     if (!file || !idToken) return;
-    const key = `${variantIndex}-${isMain ? "main" : "gallery"}`;
-    setUploadingKey(key);
+    const fileKeyBase = `${variantIndex}-${isMain ? "main" : "gallery"}`;
+    setCompressingKey(fileKeyBase);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", folder);
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${idToken}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok || !data?.success) return;
-      const url = data.url;
+      const webpFile = await compressToWebP(file);
+      const previewUrl = URL.createObjectURL(webpFile);
+      const fileKey = `${fileKeyBase}-${Date.now()}`;
+      
+      setPendingUploads(prev => ({ ...prev, [fileKey]: { file: webpFile, folder } }));
 
       setDraft((prev) => {
         const next = structuredClone(prev);
         if (!next.variants[variantIndex]) return prev;
+        
+        let oldUrl = null;
         if (isMain) {
-          next.variants[variantIndex].mainImage = url;
+          oldUrl = next.variants[variantIndex].mainImage;
+          next.variants[variantIndex].mainImage = previewUrl;
+          next.variants[variantIndex]._mainPendingKey = fileKey;
         } else {
-          next.variants[variantIndex].galleryImages.push(url);
+          next.variants[variantIndex].galleryImages.push(previewUrl);
+          if (!next.variants[variantIndex]._galleryPendingKeys) next.variants[variantIndex]._galleryPendingKeys = [];
+          next.variants[variantIndex]._galleryPendingKeys.push(fileKey);
+        }
+        
+        if (oldUrl && oldUrl.startsWith("http")) {
+          setDeletedImages(prevD => [...prevD, oldUrl]);
         }
         return next;
       });
+    } catch (err) {
+      alert("Failed to compress image");
     } finally {
-      setUploadingKey("");
+      setCompressingKey("");
     }
   };
 
   const saveDraft = async () => {
     if (!idToken) return;
     setSaveLoading(true);
+    setSaveStatus("Uploading Images...");
     try {
+      // 1. Upload pending images
+      const uploadPromises = Object.entries(pendingUploads).map(async ([key, uploadInfo]) => {
+        const formData = new FormData();
+        formData.append("file", uploadInfo.file);
+        formData.append("folder", uploadInfo.folder);
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${idToken}` },
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.success) throw new Error("Failed to upload " + key);
+        return { key, url: data.url };
+      });
+      
+      const uploadedResults = await Promise.all(uploadPromises);
+      const uploadedMap = uploadedResults.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.url }), {});
+
+      // 2. Prepare payload and swap preview URLs with real ones
       const autoName = draft.variants[0]?.variantName || draft.product.name || "Untitled";
       const autoDesc = draft.variants[0]?.description || draft.product.description || "";
+      
+      const variantsWithRealUrls = draft.variants.map((variant) => {
+        const v = { ...variant };
+        if (v._mainPendingKey && uploadedMap[v._mainPendingKey]) {
+          v.mainImage = uploadedMap[v._mainPendingKey];
+        }
+        if (v._galleryPendingKeys && v._galleryPendingKeys.length > 0) {
+          // Re-map gallery images. We assume the array order corresponds, 
+          // or we can just replace any blob URL that has a matching pending key.
+          // For safety, let's just use the fact that we pushed the URLs in order.
+          // But a simpler way: let's filter out blobs and push the new URLs.
+          // Wait, preview URLs are in the array, let's find and replace.
+          v.galleryImages = v.galleryImages.map(imgUrl => {
+            if (imgUrl.startsWith("blob:")) {
+              const matchingKey = v._galleryPendingKeys.find(k => pendingUploads[k]?.file && URL.createObjectURL(pendingUploads[k].file) === imgUrl);
+              // Since we don't have direct reverse map for URL, we'll just consume from the map in order.
+              // Actually, since we only append blobs, let's just filter out blobs and concat all new uploaded map URLs for gallery.
+            }
+            return imgUrl; // Fallback
+          });
+          
+          // Better approach for gallery:
+          const newGalleryUrls = v._galleryPendingKeys.map(k => uploadedMap[k]).filter(Boolean);
+          v.galleryImages = v.galleryImages.filter(img => !img.startsWith("blob:")).concat(newGalleryUrls);
+        }
+        
+        delete v._mainPendingKey;
+        delete v._galleryPendingKeys;
+        
+        return {
+          ...v,
+          sizes: v.sizes
+            .filter((sizeEntry) => sizeEntry.exists)
+            .map((sizeEntry) => ({
+              size: sizeEntry.size,
+              inStock: !!sizeEntry.inStock,
+            })),
+        };
+      });
+
       const payload = {
         category: draft.category,
         product: {
@@ -571,16 +716,10 @@ export default function AdminPage() {
             washCare: draft.product.details?.washCare || "",
           },
         },
-        variants: draft.variants.map((variant) => ({
-          ...variant,
-          sizes: variant.sizes
-            .filter((sizeEntry) => sizeEntry.exists)
-            .map((sizeEntry) => ({
-              size: sizeEntry.size,
-              inStock: !!sizeEntry.inStock,
-            })),
-        })),
+        variants: variantsWithRealUrls,
       };
+
+      setSaveStatus("Saving Product Data...");
 
       const res = await fetch("/api/admin/catalog", {
         method: "POST",
@@ -595,11 +734,34 @@ export default function AdminPage() {
         alert(data?.error || "An unknown error occurred while saving.");
         return;
       }
+      
+      // 3. Delete replaced images from Supabase
+      if (deletedImages.length > 0) {
+        try {
+          await fetch("/api/admin/upload", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ urls: deletedImages }),
+          });
+        } catch (e) {
+          console.error("Failed to clean up old images");
+        }
+      }
+      
+      // Reset pending state
+      setPendingUploads({});
+      setDeletedImages([]);
+
       await loadCatalog(idToken); // Reload properly from backend
+      alert("Product saved successfully!");
       setActiveTab("products");
       setDraft(emptyDraft());
     } finally {
       setSaveLoading(false);
+      setSaveStatus("");
     }
   };
 
@@ -720,7 +882,7 @@ export default function AdminPage() {
         </button>
         <button
           className={`admin-sidebar__btn ${activeTab === "orders" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("orders")}
+          onClick={() => { setActiveTab("orders"); setOrderSubTab("successful"); }}
         >
           <Package size={14} />
           Orders
@@ -885,7 +1047,15 @@ export default function AdminPage() {
           </section>
         )}
 
-        {activeTab === "orders" && (
+        {activeTab === "orders" && (() => {
+          const displayedOrders = ordersList.filter(o => {
+            const isSuccess = ["SUCCESS", "COMPLETED", "PAYMENT_SUCCESS"].includes(o.status);
+            if (orderSubTab === "successful") return isSuccess;
+            if (orderSubTab === "others") return !isSuccess;
+            return true;
+          });
+
+          return (
           <section>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
               <h1 className="admin-title" style={{ marginBottom: 0 }}>Orders</h1>
@@ -910,10 +1080,35 @@ export default function AdminPage() {
                 Export CSV
               </button>
             </div>
+
+            <div style={{ display: "flex", gap: "2px", marginBottom: "16px", borderBottom: "1px solid #e5e7eb" }}>
+              {["all", "successful", "others"].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setOrderSubTab(tab)}
+                  style={{
+                    padding: "8px 20px",
+                    background: orderSubTab === tab ? "white" : "#f3f4f6",
+                    border: "1px solid #e5e7eb",
+                    borderBottom: "none",
+                    borderTop: orderSubTab === tab ? "3px solid #e11d48" : "1px solid #e5e7eb",
+                    borderRadius: "6px 6px 0 0",
+                    fontWeight: orderSubTab === tab ? "600" : "500",
+                    color: orderSubTab === tab ? "#111" : "#6b7280",
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                    fontFamily: "'Google Sans Flex', sans-serif",
+                    marginTop: orderSubTab === tab ? "-2px" : "0",
+                  }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
             {ordersLoading ? (
               <p className="admin-muted">Loading...</p>
-            ) : ordersList.length === 0 ? (
-              <p className="admin-muted">No orders found.</p>
+            ) : displayedOrders.length === 0 ? (
+              <p className="admin-muted">No orders found for this tab.</p>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "8px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
@@ -931,7 +1126,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {ordersList.map((o, i) => (
+                    {displayedOrders.map((o, i) => (
                       <tr
                         key={o.id}
                         onClick={() => setSelectedOrder(o)}
@@ -973,7 +1168,8 @@ export default function AdminPage() {
               </div>
             )}
           </section>
-        )}
+          );
+        })()}
 
         {activeTab === "add" && (
           <section className="admin-form-wrap">
@@ -1317,9 +1513,8 @@ export default function AdminPage() {
                         }
                       />
                     </label>
-                    {uploadingKey === `${variantIndex}-main` ||
-                    uploadingKey === `${variantIndex}-gallery` ? (
-                      <span className="admin-muted" style={{ alignSelf: "center" }}>Uploading...</span>
+                    {compressingKey === `${variantIndex}-main` || compressingKey === `${variantIndex}-gallery` ? (
+                      <span className="admin-muted" style={{ alignSelf: "center", color: "#e11d48", fontWeight: "600" }}>Compressing...</span>
                     ) : null}
                   </div>
 
@@ -1333,6 +1528,10 @@ export default function AdminPage() {
                           onClick={() =>
                             setDraft((prev) => {
                               const next = structuredClone(prev);
+                              const removedImg = next.variants[variantIndex].galleryImages[imageIndex];
+                              if (removedImg && removedImg.startsWith("http")) {
+                                setDeletedImages(prevD => [...prevD, removedImg]);
+                              }
                               next.variants[variantIndex].galleryImages = next.variants[
                                 variantIndex
                               ].galleryImages.filter((_, i) => i !== imageIndex);
@@ -1403,62 +1602,114 @@ export default function AdminPage() {
       {selectedOrder && (
         <div className="admin-order-modal">
           <div className="admin-order-modal__overlay" onClick={() => setSelectedOrder(null)} />
-          <div className="admin-order-modal__content">
+          <div className="admin-order-modal__content" style={{ maxWidth: "900px", width: "95%" }}>
             <div className="admin-order-modal__header">
               <h2>Order Details — {selectedOrder.orderId || selectedOrder.id}</h2>
               <button onClick={() => setSelectedOrder(null)}><X size={20} /></button>
             </div>
-            <div className="admin-order-modal__body">
-              <div className="admin-order-modal__grid">
-                <div className="admin-order-modal__section">
-                  <h4>Billing Details</h4>
+            <div className="admin-order-modal__body" style={{ display: "flex", gap: "24px", paddingTop: "16px" }}>
+              {/* Left Column */}
+              <div style={{ flex: 1, borderRight: "1px solid #e5e7eb", paddingRight: "24px" }}>
+                <div className="admin-order-modal__section" style={{ marginBottom: "20px" }}>
+                  <h4 style={{ color: "#374151", marginBottom: "8px", borderBottom: "1px solid #eee", paddingBottom: "4px" }}>Customer Info</h4>
                   <p><strong>Name:</strong> {selectedOrder.billingAddress?.billingName || selectedOrder.userName || "N/A"}</p>
                   <p><strong>Contact:</strong> {selectedOrder.userPhone || selectedOrder.billingAddress?.contactNumber || "N/A"}</p>
                   <p><strong>Email:</strong> {selectedOrder.userEmail || "N/A"}</p>
-                  <p><strong>Address:</strong> {selectedOrder.billingAddress?.formattedAddress || "N/A"}</p>
                 </div>
-                <div className="admin-order-modal__section">
-                  <h4>Shipping Details</h4>
+
+                <div className="admin-order-modal__section" style={{ marginBottom: "20px" }}>
+                  <h4 style={{ color: "#374151", marginBottom: "8px", borderBottom: "1px solid #eee", paddingBottom: "4px" }}>Shipping Address</h4>
                   <p><strong>Receiver:</strong> {selectedOrder.shippingAddress?.receiverName || "N/A"}</p>
                   <p><strong>Contact:</strong> {selectedOrder.shippingAddress?.contactNumber || "N/A"}</p>
-                  <p><strong>Address:</strong> {selectedOrder.shippingAddress?.formattedAddress || "N/A"}</p>
+                  <p style={{ marginTop: "4px", whiteSpace: "pre-wrap", background: "#f9fafb", padding: "8px", borderRadius: "4px", fontSize: "13px" }}>
+                    {selectedOrder.shippingAddress?.formattedAddress || "N/A"}
+                  </p>
+                </div>
+                
+                <div className="admin-order-modal__section">
+                  <h4 style={{ color: "#374151", marginBottom: "8px", borderBottom: "1px solid #eee", paddingBottom: "4px" }}>Billing Address</h4>
+                  <p style={{ whiteSpace: "pre-wrap", background: "#f9fafb", padding: "8px", borderRadius: "4px", fontSize: "13px" }}>
+                    {selectedOrder.billingAddress?.formattedAddress || "N/A"}
+                  </p>
                 </div>
               </div>
-              <div className="admin-order-modal__section" style={{ marginTop: "16px" }}>
-                <h4>Order Items</h4>
-                <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "8px" }}>
-                  <thead>
-                    <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
-                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Product</th>
-                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Size</th>
-                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Qty</th>
-                      <th style={{ padding: "8px 12px", fontWeight: "600", fontSize: "13px" }}>Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+
+              {/* Right Column */}
+              <div style={{ flex: 2 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                  <div>
+                    <h4 style={{ color: "#374151", marginBottom: "4px" }}>Order Status</h4>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>{selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "N/A"} • {selectedOrder.paymentMethod || "PhonePe"}</p>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <span style={{ padding: "4px 12px", borderRadius: "16px", fontSize: "13px", fontWeight: "600", background: selectedOrder.status === "SUCCESS" ? "#dcfce7" : selectedOrder.status === "FAILED" ? "#fee2e2" : "#fef9c3", color: selectedOrder.status === "SUCCESS" ? "#166534" : selectedOrder.status === "FAILED" ? "#991b1b" : "#854d0e" }}>
+                      {selectedOrder.status || "PENDING"}
+                    </span>
+                    {selectedOrder.status !== "SUCCESS" && (
+                      <button 
+                        onClick={() => handleMarkSuccess(selectedOrder.orderId || selectedOrder.id)}
+                        style={{ padding: "6px 14px", background: "#111", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                      >
+                        <CheckCircle size={14} /> Mark as Success
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="admin-order-modal__section">
+                  <h4 style={{ color: "#374151", marginBottom: "8px", borderBottom: "1px solid #eee", paddingBottom: "4px" }}>Items</h4>
+                  <div style={{ maxHeight: "300px", overflowY: "auto", paddingRight: "8px" }}>
                     {(selectedOrder.cartItems || []).map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                        <td style={{ padding: "8px 12px", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
-                          {item.image && <img src={item.image} alt="" style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px" }} />}
-                          {item.name}
-                        </td>
-                        <td style={{ padding: "8px 12px", fontSize: "13px" }}>{item.size}</td>
-                        <td style={{ padding: "8px 12px", fontSize: "13px" }}>{item.quantity || 1}</td>
-                        <td style={{ padding: "8px 12px", fontSize: "13px" }}>₹{(item.price * (item.quantity || 1)).toLocaleString()}</td>
-                      </tr>
+                      <div key={idx} style={{ display: "flex", gap: "12px", padding: "12px 0", borderBottom: "1px solid #f3f4f6" }}>
+                        {item.image ? (
+                          <img src={item.image} alt="" style={{ width: "60px", height: "75px", objectFit: "cover", borderRadius: "6px", border: "1px solid #eee" }} />
+                        ) : (
+                          <div style={{ width: "60px", height: "75px", background: "#f3f4f6", borderRadius: "6px" }} />
+                        )}
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: "600", fontSize: "14px", color: "#111" }}>{item.name}</p>
+                            <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>{item.brand} • {item.category}</p>
+                            <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#374151", fontWeight: "500" }}>{item.size} {item.colorName ? `| ${item.colorName}` : ""}</p>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                          <p style={{ margin: 0, fontWeight: "600", fontSize: "14px" }}>₹{((item.discountPriceINR || item.priceINR || item.price || 0) * (item.quantity || 1)).toLocaleString()}</p>
+                          <p style={{ margin: 0, fontSize: "12px", color: "#6b7280" }}>Qty: {item.quantity || 1}</p>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="admin-order-modal__section" style={{ marginTop: "16px" }}>
-                <h4>Payment Info</h4>
-                <p><strong>Total:</strong> ₹{(selectedOrder.amount || 0).toLocaleString()}</p>
-                <p><strong>Status:</strong> <span style={{ padding: "2px 8px", borderRadius: "4px", fontSize: "12px", fontWeight: "600", background: selectedOrder.status === "SUCCESS" ? "#dcfce7" : selectedOrder.status === "FAILED" ? "#fee2e2" : "#fef9c3", color: selectedOrder.status === "SUCCESS" ? "#166534" : selectedOrder.status === "FAILED" ? "#991b1b" : "#854d0e" }}>{selectedOrder.status || "PENDING"}</span></p>
-                <p><strong>Method:</strong> {selectedOrder.paymentMethod || "PhonePe"}</p>
-                <p><strong>Date:</strong> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString() : "N/A"}</p>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", paddingTop: "16px", borderTop: "2px solid #e5e7eb" }}>
+                    <span style={{ fontSize: "16px", fontWeight: "600" }}>Total Amount</span>
+                    <span style={{ fontSize: "20px", fontWeight: "700", color: "#111" }}>₹{(selectedOrder.amount || 0).toLocaleString()}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Global Saving Overlay */}
+      {saveStatus && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(255, 255, 255, 0.7)",
+          backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999,
+          flexDirection: "column", gap: "16px"
+        }}>
+          <div style={{
+            width: "48px", height: "48px",
+            border: "4px solid #f3f4f6", borderTop: "4px solid #e11d48",
+            borderRadius: "50%", animation: "spin 1s linear infinite"
+          }} />
+          <h2 style={{ margin: 0, color: "#111", fontSize: "20px" }}>{saveStatus}</h2>
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          `}} />
         </div>
       )}
     </div>
