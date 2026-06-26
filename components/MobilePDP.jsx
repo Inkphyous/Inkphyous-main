@@ -200,7 +200,7 @@ export default function MobilePDP({
           </div>
           <div
             style={{
-              fontFamily: "var(--font-heading)",
+              fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: "28px",
               fontWeight: 700,
               color: "var(--color-text)",

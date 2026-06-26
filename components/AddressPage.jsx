@@ -130,9 +130,7 @@ export default function AddressPage() {
     setInitiatingPayment(true);
 
     try {
-      const vatRate = 0.05;
-      const vatAmount = Math.round(cartTotal * vatRate);
-      const totalAmount = cartTotal + vatAmount;
+
 
       const response = await fetch("/api/phonepe/initiate", {
         method: "POST",
@@ -188,8 +186,7 @@ export default function AddressPage() {
     );
   }
 
-  const vatAmount = Math.round(cartTotal * 0.05);
-  const totalAmount = cartTotal + vatAmount;
+  const totalAmount = cartTotal;
 
   return (
     <div className="address-page">
@@ -363,10 +360,7 @@ export default function AddressPage() {
               <span>Subtotal</span>
               <span>₹{cartTotal.toLocaleString()}</span>
             </div>
-            <div className="address-page__summary-row">
-              <span>VAT (5%)</span>
-              <span>₹{vatAmount.toLocaleString()}</span>
-            </div>
+
             <div className="address-page__summary-row">
               <span>Shipping</span>
               <span style={{ color: "#16a34a" }}>Free</span>

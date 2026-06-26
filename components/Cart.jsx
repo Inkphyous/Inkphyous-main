@@ -62,8 +62,7 @@ const Cart = () => {
     : "";
 
   // Calculate VAT (assuming 5% VAT)
-  const vatRate = 0.05;
-  const vatAmount = Math.round(cartTotal * vatRate);
+  // VAT removed per request
 
   if (authLoading || cartLoading) {
     return (
@@ -243,10 +242,7 @@ const Cart = () => {
               <span>₹{cartTotal.toLocaleString()}</span>
             </div>
 
-            <div className="cart-summary__row cart-summary__row--vat">
-              <span>VAT</span>
-              <span>₹{vatAmount.toLocaleString()}</span>
-            </div>
+
 
             <div className="cart-summary__divider" />
 

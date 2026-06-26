@@ -508,10 +508,10 @@ img {
 }
 
 .sidebar__category {
-  font-family: var(--font-heading);
-  font-weight: 500;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
   cursor: pointer;
   padding: 2px 0;
@@ -845,7 +845,7 @@ img {
 }
 
 .pdp-overlay__category {
-  font-family: var(--font-heading);
+  font-family: 'Barlow Condensed', sans-serif;
   font-size: 32px;
   font-weight: 800;
   color: transparent;
@@ -1040,7 +1040,7 @@ img {
 }
 
 .pdp-overlay__category {
-  font-family: var(--font-heading);
+  font-family: 'Barlow Condensed', sans-serif;
   font-size: 32px;
   font-weight: 800;
   color: transparent;
