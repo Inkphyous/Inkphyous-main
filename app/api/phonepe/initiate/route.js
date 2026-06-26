@@ -26,7 +26,14 @@ async function getPhonePeAccessToken() {
     body: `grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}`
   });
 
-  const data = await response.json();
+  const responseText = await response.text();
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch (err) {
+    throw new Error(`Failed to parse OAuth token response. Status: ${response.status}. Body: ${responseText.slice(0, 200)}`);
+  }
+
   if (!response.ok || !data.access_token) {
     throw new Error(`Failed to get OAuth token: ${data.message || JSON.stringify(data)}`);
   }
@@ -128,7 +135,14 @@ export async function POST(request) {
       body: JSON.stringify(payload),
     });
 
-    const phonepeData = await phonepeResponse.json();
+    const phonepeResponseText = await phonepeResponse.text();
+    let phonepeData;
+    try {
+      phonepeData = JSON.parse(phonepeResponseText);
+    } catch (err) {
+      throw new Error(`Failed to parse PhonePe API response. Status: ${phonepeResponse.status}. Body: ${phonepeResponseText.slice(0, 200)}`);
+    }
+
     console.log("PhonePe API Response Status:", phonepeResponse.status);
     console.log("PhonePe API Response Body:", phonepeData);
 
