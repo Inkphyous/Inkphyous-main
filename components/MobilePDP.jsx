@@ -141,6 +141,8 @@ export default function MobilePDP({
   selectedSize,
   setSelectedSize,
   galleryImages,
+  activeProductIdx = 0,
+  totalProducts = 3,
   onAddToCart,
   onSetVariant,
   onLightbox,
@@ -153,6 +155,9 @@ export default function MobilePDP({
   const isDisabled =
     !selectedSize ||
     !variantSizes.find((s) => s.size === selectedSize)?.inStock;
+
+  // Swiping in PDP changes the variant. We track variant index to move the dot.
+  const activeVariantIdx = product?.variants?.findIndex(v => v.id === variant?.id) || 0;
 
   return (
     <div style={{ width: "100%" }}>
@@ -167,37 +172,64 @@ export default function MobilePDP({
         <div>
           {/* Brand + Variant name + Price + Swatches */}
       <div style={{ marginBottom: "12px" }}>
+        {/* Variant dots indicator above brand */}
+        <div className="mobile-dots" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+          {Array.from({ length: product?.variants?.length || 1 }).map((_, idx) => {
+            const isActive = activeVariantIdx === idx;
+            return (
+              <div
+                key={`pdp-mobile-dot-${idx}`}
+                style={{
+                  width: isActive ? "10px" : "6px",
+                  height: isActive ? "10px" : "6px",
+                  backgroundColor: isActive ? "#e11d48" : "#000",
+                  borderRadius: "50%",
+                  transition: "all 0.3s ease",
+                }}
+              />
+            );
+          })}
+        </div>
         {/* Row 1: Brand/Category & Price */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-            <h1
-              style={{
-                fontFamily: "var(--font-brand)",
-                fontSize: "28px",
-                fontWeight: 800,
-                letterSpacing: "1px",
-                textTransform: "uppercase",
-                color: "var(--color-text)",
-                margin: 0,
-                lineHeight: 1,
-              }}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`mobile-header-${variant.id}`}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{ display: "flex", alignItems: "baseline", gap: "10px" }}
             >
-              {variant.name || product.brand}
-            </h1>
-            <span
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "18px",
-                fontWeight: 800,
-                color: "transparent",
-                WebkitTextStroke: "1px #e11d48",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-              }}
-            >
-              {t(product.category.toLowerCase())}
-            </span>
-          </div>
+              <h1
+                style={{
+                  fontFamily: "var(--font-brand)",
+                  fontSize: "28px",
+                  fontWeight: 800,
+                  letterSpacing: "1px",
+                  textTransform: "uppercase",
+                  color: "var(--color-text)",
+                  margin: 0,
+                  lineHeight: 1,
+                }}
+              >
+                {variant.name || product.brand}
+              </h1>
+              <span
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: "18px",
+                  fontWeight: 800,
+                  color: "transparent",
+                  WebkitTextStroke: "1px #e11d48",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                }}
+              >
+                {t(product.category.toLowerCase())}
+              </span>
+            </motion.div>
+          </AnimatePresence>
           <div
             style={{
               fontFamily: "'Barlow Condensed', sans-serif",
@@ -214,18 +246,25 @@ export default function MobilePDP({
 
         {/* Row 2: Variant Name & Swatches */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <p
-            style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: "18px",
-              fontWeight: 400,
-              letterSpacing: "1px",
-              color: "var(--color-text)",
-              margin: 0,
-            }}
-          >
-            {variant.semiDescription || variant.name}
-          </p>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={`mobile-desc-${variant.id}`}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize: "18px",
+                fontWeight: 400,
+                letterSpacing: "1px",
+                color: "var(--color-text)",
+                margin: 0,
+              }}
+            >
+              {variant.semiDescription || variant.name}
+            </motion.p>
+          </AnimatePresence>
           <div
             style={{
               display: "flex",

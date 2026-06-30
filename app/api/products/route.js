@@ -75,7 +75,7 @@ export async function GET() {
     }
 
     const composedProducts = composeProductsFromCatalogRows({
-      categories: categoriesResult.data || [],
+      categories: (categoriesResult.data || []).filter(c => c.is_active !== false),
       products: productsResult.data || [],
       colors: colorsResult.data || [],
       variants: variantsResult.data || [],

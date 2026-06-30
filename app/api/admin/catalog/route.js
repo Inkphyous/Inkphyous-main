@@ -72,6 +72,13 @@ async function upsertProductPayload(supabase, payload) {
     throw new Error("category.name, product.name and variants are required.");
   }
 
+  // Get existing variants for cleanup later
+  let existingVariants = [];
+  if (productInput.id) {
+    const { data } = await supabase.from("product_variants").select("product_id, color_ref_id").eq("product_ref_id", productInput.id);
+    if (data) existingVariants = data;
+  }
+
   const categorySlug = payload?.category?.slug || slugify(categoryName);
   const { data: categoryRows, error: categoryError } = await supabase
     .from("product_categories")
@@ -128,6 +135,9 @@ async function upsertProductPayload(supabase, payload) {
   let canWriteVariantSizes = true;
   const variantSizesMap = {};
   const variantSemiDescriptionsMap = {};
+  
+  const incomingVariantSkus = new Set();
+  const incomingColorIds = new Set();
 
   for (const [variantPosition, variantInput] of variantsInput.entries()) {
     const colorName = variantInput.colorName || variantInput.color || "Default";
@@ -196,6 +206,9 @@ async function upsertProductPayload(supabase, payload) {
       { onConflict: "product_id" }
     );
     if (variantError) throw new Error(variantError.message);
+    
+    incomingVariantSkus.add(productId);
+    incomingColorIds.add(colorRow.id);
 
     const imageUrls = [mainImage, ...(variantInput.galleryImages || [])];
     const dedupedImages = [...new Set(imageUrls)];
@@ -261,6 +274,18 @@ async function upsertProductPayload(supabase, payload) {
     }
   }
 
+  // Cleanup removed variants
+  const variantsToDelete = existingVariants.filter(v => !incomingVariantSkus.has(v.product_id));
+  if (variantsToDelete.length > 0) {
+    const skusToDelete = variantsToDelete.map(v => v.product_id);
+    const colorsToDelete = variantsToDelete.map(v => v.color_ref_id);
+    
+    await supabase.from("product_variant_sizes").delete().in("variant_product_id", skusToDelete);
+    await supabase.from("product_variant_images").delete().in("variant_product_id", skusToDelete);
+    await supabase.from("product_variants").delete().in("product_id", skusToDelete);
+    await supabase.from("product_colors").delete().in("id", colorsToDelete);
+  }
+
   const newDetails = productRow.details && typeof productRow.details === "object" ? { ...productRow.details } : {};
   newDetails.migrated_sizes = true;
   newDetails.variant_sizes = variantSizesMap;
@@ -324,7 +349,31 @@ export async function DELETE(request) {
     const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get("productId");
-    if (!productId) return jsonError("Missing productId.");
+    const categoryId = searchParams.get("categoryId");
+
+    if (categoryId) {
+      // Delete category
+      // Note: This may fail if there are products still referencing this category due to foreign keys.
+      const { error } = await supabase.from("product_categories").delete().eq("id", categoryId);
+      if (error) throw new Error(error.message);
+      const data = await getCatalog(supabase);
+      return NextResponse.json({ success: true, ...data });
+    }
+
+    if (!productId) return jsonError("Missing productId or categoryId.");
+
+    // Find all variants for this product
+    const { data: variants } = await supabase.from("product_variants").select("product_id, color_ref_id").eq("product_ref_id", productId);
+    if (variants && variants.length > 0) {
+      const skus = variants.map(v => v.product_id);
+      const colorIds = variants.map(v => v.color_ref_id);
+      
+      // Cascade delete manually
+      await supabase.from("product_variant_sizes").delete().in("variant_product_id", skus);
+      await supabase.from("product_variant_images").delete().in("variant_product_id", skus);
+      await supabase.from("product_variants").delete().in("product_id", skus);
+      await supabase.from("product_colors").delete().in("id", colorIds);
+    }
 
     const { error } = await supabase.from("catalog_products").delete().eq("id", productId);
     if (error) throw new Error(error.message);
@@ -333,5 +382,49 @@ export async function DELETE(request) {
   } catch (error) {
     if (error.message === "Unauthorized") return jsonError(error.message, 401);
     return jsonError(error.message || "Failed to delete product.", 500);
+  }
+}
+
+export async function PATCH(request) {
+  if (!hasSupabaseAdminEnv()) {
+    return jsonError("Supabase env vars are not configured.", 500);
+  }
+  try {
+    await ensureAdmin(request);
+    const supabase = getSupabaseAdmin();
+    const body = await request.json();
+    const { type, id, is_active } = body;
+
+    if (type === "product") {
+      const { error: prodErr } = await supabase.from("catalog_products").update({ is_active }).eq("id", id);
+      if (prodErr) throw new Error(prodErr.message);
+      
+      // Also update variants and colors to match product visibility
+      const { error: colorErr } = await supabase.from("product_colors").update({ is_active }).eq("product_id", id);
+      if (colorErr) throw new Error(colorErr.message);
+      
+      const { error: varErr } = await supabase.from("product_variants").update({ is_active }).eq("product_ref_id", id);
+      if (varErr) throw new Error(varErr.message);
+    } else if (type === "category") {
+      // Since product_categories doesn't have is_active, we toggle visibility by updating all products in it
+      const { data: products } = await supabase.from("catalog_products").select("id").eq("category_id", id);
+      if (products && products.length > 0) {
+        const productIds = products.map(p => p.id);
+        
+        const { error: prodErr } = await supabase.from("catalog_products").update({ is_active }).in("id", productIds);
+        if (prodErr) throw new Error(prodErr.message);
+        
+        await supabase.from("product_colors").update({ is_active }).in("product_id", productIds);
+        await supabase.from("product_variants").update({ is_active }).in("product_ref_id", productIds);
+      }
+    } else {
+      return jsonError("Invalid type for visibility toggle.");
+    }
+
+    const data = await getCatalog(supabase);
+    return NextResponse.json({ success: true, ...data });
+  } catch (error) {
+    if (error.message === "Unauthorized") return jsonError(error.message, 401);
+    return jsonError(error.message || "Failed to update visibility.", 500);
   }
 }

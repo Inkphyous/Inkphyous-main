@@ -6,9 +6,10 @@ import { useStore } from "./providers/StoreProvider";
 import { ArrowLeft, Package, ChevronDown, ChevronUp } from "lucide-react";
 
 const STATUS_COLORS = {
-  SUCCESS: { bg: "#dcfce7", color: "#166534", label: "Paid" },
+  SUCCESS: { bg: "#dcfce7", color: "#166534", label: "Order Placed" },
   PENDING: { bg: "#fef9c3", color: "#854d0e", label: "Pending" },
   FAILED: { bg: "#fee2e2", color: "#991b1b", label: "Failed" },
+  SHIPPED: { bg: "#dbeafe", color: "#1e40af", label: "Order Shipped" },
 };
 
 export default function MyOrders() {
@@ -132,6 +133,34 @@ export default function MyOrders() {
 
                   {isExpanded && (
                     <div className="order-card__details">
+                      {order.status === "SHIPPED" && order.shiprocket && (
+                        <div className="order-card__section" style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
+                          <h4 style={{ display: "flex", alignItems: "center", gap: "6px", color: "#1e40af", margin: 0 }}>
+                            <Package size={16} /> Tracking Details
+                          </h4>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px", fontSize: "14px" }}>
+                            <div>
+                              <p style={{ color: "#64748b", margin: 0, fontSize: "12px" }}>AWB Number</p>
+                              <p style={{ margin: "2px 0 0 0", fontWeight: "600" }}>{order.shiprocket.awb_code || "Processing"}</p>
+                            </div>
+                            <div>
+                              <p style={{ color: "#64748b", margin: 0, fontSize: "12px" }}>Courier</p>
+                              <p style={{ margin: "2px 0 0 0", fontWeight: "600" }}>{order.shiprocket.courier_name || "Assigning..."}</p>
+                            </div>
+                          </div>
+                          {order.shiprocket.tracking_url && (
+                            <a 
+                              href={order.shiprocket.tracking_url} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              style={{ display: "inline-block", marginTop: "16px", padding: "8px 16px", background: "#111", color: "#fff", textDecoration: "none", borderRadius: "6px", fontSize: "14px", fontWeight: "600" }}
+                            >
+                              Track on Shiprocket
+                            </a>
+                          )}
+                        </div>
+                      )}
+
                       <div className="order-card__section">
                         <h4>Items</h4>
                         <div className="order-card__items">

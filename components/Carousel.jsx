@@ -475,6 +475,33 @@ export default function Carousel() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
+            {/* Mobile Dot Indicators for Homepage */}
+            <div className="mobile-dots" style={{ marginBottom: "6px" }}>
+              <AnimatePresence mode="popLayout">
+                {[-1, 0, 1].map((offset) => {
+                  const absoluteIdx = activeIndex + offset;
+                  const idx = ((absoluteIdx % products.length) + products.length) % products.length;
+                  return (
+                    <motion.div
+                      key={`home-dot-${absoluteIdx}`}
+                      layout
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
+                        width: offset === 0 ? 10 : 6,
+                        height: offset === 0 ? 10 : 6,
+                        backgroundColor: offset === 0 ? "var(--color-primary, #e11d48)" : "#000",
+                      }}
+                      exit={{ opacity: 0, scale: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      className="mobile-dot"
+                    />
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+
             {/* Brand text — exit starts immediately, entrance delayed */}
             <div className="carousel__text-clip--brand">
               <AnimatePresence mode="popLayout" custom={direction}>
@@ -522,53 +549,6 @@ export default function Carousel() {
         )}
       </AnimatePresence>
     </div>
-
-      {/* Mobile Dot Indicators */}
-      <div className={`mobile-dots ${isPDP ? "mobile-dots--pdp" : ""}`}>
-        {!isPDP ? (
-          <AnimatePresence mode="popLayout">
-            {[-1, 0, 1].map((offset) => {
-              const absoluteIdx = activeIndex + offset;
-              const idx = ((absoluteIdx % products.length) + products.length) % products.length;
-              return (
-                <motion.div
-                  key={`home-dot-${absoluteIdx}`}
-                  layout
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{
-                    opacity: 1,
-                    scale: 1,
-                    width: offset === 0 ? 10 : 6,
-                    height: offset === 0 ? 10 : 6,
-                    backgroundColor: offset === 0 ? "var(--color-primary, #e11d48)" : "#000",
-                  }}
-                  exit={{ opacity: 0, scale: 0 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className="mobile-dot"
-                />
-              );
-            })}
-          </AnimatePresence>
-        ) : (
-          vLen > 0 &&
-          variants.map((v, i) => {
-            const size = i === activePdpDotIdx ? 10 : 6;
-            return (
-              <motion.div
-                key={`pdp-dot-${i}`}
-                layout
-                animate={{ 
-                  width: size, 
-                  height: size,
-                  backgroundColor: i === activePdpDotIdx ? "var(--color-primary, #e11d48)" : "#000" 
-                }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                className="mobile-dot"
-              />
-            );
-          })
-        )}
-      </div>
     </>
   );
 }

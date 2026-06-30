@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, onIdTokenChanged, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { app as defaultApp } from "@/lib/firebase";
-import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye, CheckCircle } from "lucide-react";
+import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye, EyeOff, CheckCircle, Truck } from "lucide-react";
 import { ref, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 
@@ -278,6 +278,7 @@ export default function AdminPage() {
   const [ordersList, setOrdersList] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [shipmentForm, setShipmentForm] = useState(null);
   const [orderSubTab, setOrderSubTab] = useState("successful");
   const [pendingUploads, setPendingUploads] = useState({});
   const [deletedImages, setDeletedImages] = useState([]);
@@ -295,11 +296,6 @@ export default function AdminPage() {
   }, []);
 
   const groupedProducts = useMemo(() => groupProducts(catalog), [catalog]);
-
-  const categories = useMemo(
-    () => [...new Set(groupedProducts.map((p) => p.category?.name).filter(Boolean))],
-    [groupedProducts]
-  );
 
   useEffect(() => {
     const unsub = onIdTokenChanged(adminAuth, async (user) => {
@@ -470,6 +466,62 @@ export default function AdminPage() {
       loadOrders(idToken);
     }
   }, [isAdmin, activeTab, idToken]);
+
+  const handleMoveToShipment = (order) => {
+    setSelectedOrder(null);
+    setShipmentForm({
+      order,
+      weight: "0.5",
+      length: "10",
+      breadth: "10",
+      height: "10"
+    });
+  };
+
+  const submitShipment = async (e) => {
+    e.preventDefault();
+    if (!shipmentForm || !shipmentForm.order) return;
+    
+    setSaveLoading(true);
+    setSaveStatus("Creating Shiprocket Order...");
+    try {
+      const res = await fetch("/api/admin/shiprocket", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          orderId: shipmentForm.order.orderId || shipmentForm.order.id,
+          orderData: shipmentForm.order,
+          packageDetails: {
+            weight: Number(shipmentForm.weight),
+            length: Number(shipmentForm.length),
+            breadth: Number(shipmentForm.breadth),
+            height: Number(shipmentForm.height)
+          }
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOrdersList(prev => prev.map(o => 
+          (o.id === (shipmentForm.order.orderId || shipmentForm.order.id))
+            ? { ...o, status: "SHIPPED", shiprocket: data.fulfillmentDetails }
+            : o
+        ));
+        setShipmentForm(null);
+        setSelectedOrder(null);
+        alert("Order successfully moved to shipment!");
+      } else {
+        alert(data.error || "Failed to process shipment");
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    } finally {
+      setSaveLoading(false);
+      setSaveStatus("");
+    }
+  };
 
   const handleExportOrders = () => {
     if (ordersList.length === 0) return;
@@ -767,13 +819,70 @@ export default function AdminPage() {
 
   const deleteProduct = async (productId) => {
     if (!idToken || !productId) return;
-    const res = await fetch(`/api/admin/catalog?productId=${encodeURIComponent(productId)}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${idToken}` },
-    });
-    const data = await res.json();
-    if (res.ok && data?.success) {
-      setCatalog(data);
+    if (!window.confirm("Are you sure you want to delete this product? This will also delete all its variants, images, and sizes.")) return;
+    setSaveLoading(true);
+    setSaveStatus("Deleting product...");
+    try {
+      const res = await fetch(`/api/admin/catalog?productId=${encodeURIComponent(productId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setCatalog(data);
+      } else {
+        alert(data.error || "Failed to delete product.");
+      }
+    } finally {
+      setSaveLoading(false);
+      setSaveStatus("");
+    }
+  };
+
+  const deleteCategory = async (categoryId) => {
+    if (!idToken || !categoryId) return;
+    if (!window.confirm("Are you sure you want to delete this category? Make sure no products are still referencing it.")) return;
+    setSaveLoading(true);
+    setSaveStatus("Deleting category...");
+    try {
+      const res = await fetch(`/api/admin/catalog?categoryId=${encodeURIComponent(categoryId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setCatalog(data);
+      } else {
+        alert(data.error || "Failed to delete category.");
+      }
+    } finally {
+      setSaveLoading(false);
+      setSaveStatus("");
+    }
+  };
+
+  const toggleVisibility = async (type, id, is_active) => {
+    if (!idToken || !id) return;
+    setSaveLoading(true);
+    setSaveStatus("Updating visibility...");
+    try {
+      const res = await fetch(`/api/admin/catalog`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}` 
+        },
+        body: JSON.stringify({ type, id, is_active })
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setCatalog(data);
+      } else {
+        alert(data.error || `Failed to update ${type} visibility.`);
+      }
+    } finally {
+      setSaveLoading(false);
+      setSaveStatus("");
     }
   };
 
@@ -887,6 +996,13 @@ export default function AdminPage() {
           <Package size={14} />
           Orders
         </button>
+        <button
+          className={`admin-sidebar__btn ${activeTab === "shipping" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("shipping")}
+        >
+          <Truck size={14} />
+          Shipping
+        </button>
         <div style={{ flexGrow: 1 }} />
         <button
           className="admin-sidebar__btn"
@@ -903,20 +1019,47 @@ export default function AdminPage() {
           <section>
             <h1 className="admin-title">Products</h1>
             {catalogLoading ? <p className="admin-muted">Loading...</p> : null}
-            {categories.map((categoryName) => (
-              <div key={categoryName} className="admin-category-block">
-                <h3>{categoryName}</h3>
+            {(catalog?.categories || []).sort((a, b) => a.position - b.position).map((category) => {
+              const categoryProducts = groupedProducts.filter((entry) => entry.category?.id === category.id);
+              // A category is considered active if AT LEAST ONE product in it is active (or if it has no products, it defaults to active so it can be seen).
+              const categoryIsActive = categoryProducts.length === 0 || categoryProducts.some((entry) => entry.product.is_active !== false);
+
+              return (
+              <div key={category.id} className="admin-category-block" style={{ opacity: categoryIsActive ? 1 : 0.6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                  <h3>{category.name} {!categoryIsActive && "(Hidden)"}</h3>
+                  <div className="admin-row">
+                    <button 
+                      className="admin-btn" 
+                      onClick={() => toggleVisibility('category', category.id, !categoryIsActive)}
+                    >
+                       {categoryIsActive ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Show</>}
+                    </button>
+                    <button
+                      className="admin-btn admin-btn--danger"
+                      onClick={() => deleteCategory(category.id)}
+                      title="Delete Category"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
                 <div className="admin-product-grid">
-                  {groupedProducts
-                    .filter((entry) => entry.category?.name === categoryName)
+                  {categoryProducts
                     .map((entry) => (
-                      <article key={entry.product.id} className="admin-product-card">
+                      <article key={entry.product.id} className="admin-product-card" style={{ opacity: entry.product.is_active !== false ? 1 : 0.6 }}>
                         <div className="admin-product-card__head">
                           <div>
-                            <h4>{entry.product.brand || "No Brand"}</h4>
+                            <h4>{entry.product.brand || "No Brand"} {entry.product.is_active === false && <span style={{color: "#ef4444", fontSize: "12px"}}>(Unpublished)</span>}</h4>
                             <p className="admin-muted">{entry.product.name} • {entry.variants.length} color variants</p>
                           </div>
                           <div className="admin-row">
+                            <button 
+                              className="admin-btn" 
+                              onClick={() => toggleVisibility('product', entry.product.id, entry.product.is_active === false)}
+                            >
+                               {entry.product.is_active !== false ? "Unpublish" : "Publish"}
+                            </button>
                             <button className="admin-btn" onClick={() => startEdit(entry)}>Edit</button>
                             <button
                               className="admin-btn admin-btn--danger"
@@ -937,7 +1080,7 @@ export default function AdminPage() {
                     ))}
                 </div>
               </div>
-            ))}
+            )})}
           </section>
         )}
 
@@ -1051,9 +1194,10 @@ export default function AdminPage() {
           const displayedOrders = ordersList.filter(o => {
             const isSuccess = ["SUCCESS", "COMPLETED", "PAYMENT_SUCCESS"].includes(o.status);
             if (orderSubTab === "successful") return isSuccess;
-            if (orderSubTab === "others") return !isSuccess;
-            return true;
+            if (orderSubTab === "others") return !isSuccess && o.status !== "SHIPPED";
+            return o.status !== "SHIPPED";
           });
+
 
           return (
           <section>
@@ -1171,6 +1315,61 @@ export default function AdminPage() {
           );
         })()}
 
+        {activeTab === "shipping" && (() => {
+          const shippedOrders = ordersList.filter(o => o.status === "SHIPPED");
+          
+          return (
+            <section>
+              <h1 className="admin-title">Shipping</h1>
+              {ordersLoading ? (
+                <p className="admin-muted">Loading...</p>
+              ) : shippedOrders.length === 0 ? (
+                <p className="admin-muted">No shipped orders found.</p>
+              ) : (
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>AWB Code</th>
+                        <th>Courier</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shippedOrders.map((order) => (
+                        <tr key={order.orderId || order.id}>
+                          <td style={{ fontWeight: "600" }}>{order.orderId || order.id}</td>
+                          <td>{new Date(order.createdAt).toLocaleString()}</td>
+                          <td>{order.shippingAddress?.receiverName || order.userName || "N/A"}</td>
+                          <td style={{ fontWeight: "600", color: "#2563eb" }}>{order.shiprocket?.awb_code || "N/A"}</td>
+                          <td>{order.shiprocket?.courier_name || "N/A"}</td>
+                          <td>
+                            <button className="admin-btn" onClick={() => setSelectedOrder(order)}>View</button>
+                            {order.shiprocket?.tracking_url && (
+                              <a 
+                                href={order.shiprocket.tracking_url} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="admin-btn" 
+                                style={{ marginLeft: "8px", textDecoration: "none" }}
+                              >
+                                Track
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
         {activeTab === "add" && (
           <section className="admin-form-wrap">
             <h1 className="admin-title">{draft.product.id ? "Edit Product" : "Add Product"}</h1>
@@ -1193,7 +1392,7 @@ export default function AdminPage() {
                   style={{ marginBottom: isNewCategory ? "0.5rem" : "0" }}
                 >
                   <option value="" disabled>Select Category</option>
-                  {categories.filter(c => c && c !== "Uncategorized").map((cat) => (
+                  {(catalog?.categories || []).map(c => c.name).filter(c => c && c !== "Uncategorized").map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                   <option value="+ Add New Category">+ Add New Category</option>
@@ -1645,12 +1844,22 @@ export default function AdminPage() {
                     <span style={{ padding: "4px 12px", borderRadius: "16px", fontSize: "13px", fontWeight: "600", background: selectedOrder.status === "SUCCESS" ? "#dcfce7" : selectedOrder.status === "FAILED" ? "#fee2e2" : "#fef9c3", color: selectedOrder.status === "SUCCESS" ? "#166534" : selectedOrder.status === "FAILED" ? "#991b1b" : "#854d0e" }}>
                       {selectedOrder.status || "PENDING"}
                     </span>
-                    {selectedOrder.status !== "SUCCESS" && (
-                      <button 
-                        onClick={() => handleMarkSuccess(selectedOrder.orderId || selectedOrder.id)}
+                    {selectedOrder.status !== "SUCCESS" && selectedOrder.status !== "SHIPPED" && (
+                      <button
+                        className="admin-btn"
                         style={{ padding: "6px 14px", background: "#111", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                        onClick={() => handleMarkSuccess(selectedOrder.orderId || selectedOrder.id)}
                       >
                         <CheckCircle size={14} /> Mark as Success
+                      </button>
+                    )}
+                    {selectedOrder.status === "SUCCESS" && (
+                      <button
+                        className="admin-btn"
+                        style={{ padding: "6px 14px", background: "#e11d48", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                        onClick={() => setShipmentForm({ order: selectedOrder, weight: 0.5, length: 20, breadth: 20, height: 10 })}
+                      >
+                        <Truck size={14} /> Move to Shipment
                       </button>
                     )}
                   </div>
@@ -1686,6 +1895,68 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shipment Form Popup */}
+      {shipmentForm && (
+        <div className="admin-order-modal">
+          <div className="admin-order-modal__overlay" onClick={() => setShipmentForm(null)} />
+          <div className="admin-order-modal__content" style={{ maxWidth: "500px", width: "95%" }}>
+            <div className="admin-order-modal__header">
+              <h2>Move to Shipment</h2>
+              <button onClick={() => setShipmentForm(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="admin-order-modal__body" style={{ paddingTop: "16px" }}>
+              <p style={{ marginBottom: "16px", color: "#4b5563" }}>
+                Confirm package details for Shiprocket Adhoc Order. This will generate an AWB and schedule a pickup.
+              </p>
+              
+              <div style={{ background: "#f9fafb", padding: "16px", borderRadius: "8px", marginBottom: "20px", color: "#111" }}>
+                <p style={{ margin: "0 0 6px" }}><strong>Order ID:</strong> {shipmentForm.order.orderId || shipmentForm.order.id}</p>
+                <p style={{ margin: "0 0 6px" }}><strong>Customer:</strong> {shipmentForm.order.shippingAddress?.receiverName || "N/A"}</p>
+                <p style={{ margin: "0 0 16px" }}><strong>Phone:</strong> {shipmentForm.order.shippingAddress?.contactNumber || "N/A"}</p>
+                
+                <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
+                  <p style={{ margin: "0 0 8px", fontWeight: "600", fontSize: "14px" }}>Items to ship:</p>
+                  <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "14px", color: "#374151" }}>
+                    {(shipmentForm.order.cartItems || []).map((item, idx) => (
+                      <li key={idx} style={{ marginBottom: "6px" }}>
+                        <strong>{item.quantity || 1}x</strong> {item.name} 
+                        <span style={{ color: "#6b7280", marginLeft: "6px" }}>({item.size}{item.colorName ? ` - ${item.colorName}` : ""})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <form onSubmit={submitShipment} className="admin-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", color: "#111" }}>
+                <label style={{ color: "#111" }}>
+                  Weight (kg) *
+                  <input type="number" step="0.01" className="admin-light-input" required value={shipmentForm.weight} onChange={(e) => setShipmentForm({ ...shipmentForm, weight: e.target.value })} style={{ color: "#111" }} />
+                </label>
+                <label style={{ color: "#111" }}>
+                  Length (cm) *
+                  <input type="number" step="1" className="admin-light-input" required value={shipmentForm.length} onChange={(e) => setShipmentForm({ ...shipmentForm, length: e.target.value })} style={{ color: "#111" }} />
+                </label>
+                <label style={{ color: "#111" }}>
+                  Breadth (cm) *
+                  <input type="number" step="1" className="admin-light-input" required value={shipmentForm.breadth} onChange={(e) => setShipmentForm({ ...shipmentForm, breadth: e.target.value })} style={{ color: "#111" }} />
+                </label>
+                <label style={{ color: "#111" }}>
+                  Height (cm) *
+                  <input type="number" step="1" className="admin-light-input" required value={shipmentForm.height} onChange={(e) => setShipmentForm({ ...shipmentForm, height: e.target.value })} style={{ color: "#111" }} />
+                </label>
+                
+                <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "16px" }}>
+                  <button type="button" className="admin-btn" onClick={() => setShipmentForm(null)}>Cancel</button>
+                  <button type="submit" className="admin-btn" style={{ background: "#e11d48", color: "#fff", border: "none" }}>Confirm & Ship</button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

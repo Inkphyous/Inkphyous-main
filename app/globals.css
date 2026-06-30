@@ -1053,7 +1053,7 @@ img {
   font-family: var(--font-heading);
   font-size: 64px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: -2px;
   line-height: 1;
 }
 
@@ -2003,15 +2003,11 @@ body.lightbox-open .header__back-btn {
     justify-content: space-between;
   }
 
-  .mobile-dots {
+  .mobile-dots, .pdp-mobile-dots {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 6px;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 72vh;
     z-index: 50;
     pointer-events: none;
   }
@@ -2019,6 +2015,7 @@ body.lightbox-open .header__back-btn {
   .mobile-dot {
     background-color: #000;
     border-radius: 50%;
+    transition: all 0.3s ease;
   }
 
   .pdp-overlay__mobile-hero {

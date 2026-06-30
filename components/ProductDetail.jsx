@@ -478,6 +478,8 @@ export default function ProductDetail() {
             selectedSize={selectedSize}
             setSelectedSize={setSelectedSize}
             galleryImages={galleryImages}
+            activeProductIdx={products.findIndex((p) => p.id === pdpProductId)}
+            totalProducts={products.length}
             onAddToCart={handleAddToCart}
             onSetVariant={setPdpVariantId}
             onLightbox={setLightboxIndex}
@@ -591,7 +593,7 @@ export default function ProductDetail() {
             <div className="pdp-overlay__brand-section" style={{ marginBottom: "20px" }}>
               <AnimatePresence mode="wait">
                 <motion.div 
-                  key={`header-${product.id}`}
+                  key={`header-${variant.id}`}
                   style={{ display: "flex", alignItems: "baseline", gap: "14px" }}
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
