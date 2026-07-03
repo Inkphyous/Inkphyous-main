@@ -10,7 +10,7 @@ export async function POST(request) {
   }
 
   try {
-    const { orderId, shipmentId } = await request.json();
+    const { orderId, shipmentId, courierId } = await request.json();
 
     if (!orderId || !shipmentId) {
       return NextResponse.json(
@@ -21,7 +21,7 @@ export async function POST(request) {
 
     let pickupDetails;
     try {
-      pickupDetails = await scheduleShiprocketPickup(shipmentId);
+      pickupDetails = await scheduleShiprocketPickup(shipmentId, courierId);
     } catch (apiError) {
       console.error("Shiprocket Pickup Error:", apiError);
       return NextResponse.json(

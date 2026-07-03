@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, onIdTokenChanged, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { app as defaultApp } from "@/lib/firebase";
-import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye, EyeOff, CheckCircle, Truck, Bell } from "lucide-react";
+import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye, EyeOff, CheckCircle, Truck, Bell, Search } from "lucide-react";
 import { ref, onValue } from "firebase/database";
 import { getMessaging, getToken } from "firebase/messaging";
 import { db } from "@/lib/firebase";
@@ -301,7 +301,21 @@ export default function AdminPage() {
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
       if (Notification.permission === "granted") {
-        setNotificationStatus("success");
+        navigator.serviceWorker.getRegistration('/').then(reg => {
+          if (reg && reg.pushManager) {
+            reg.pushManager.getSubscription().then(sub => {
+              if (sub) {
+                setNotificationStatus("success");
+              } else {
+                setNotificationStatus("idle");
+              }
+            }).catch(() => setNotificationStatus("idle"));
+          } else {
+            setNotificationStatus("idle");
+          }
+        }).catch(() => setNotificationStatus("idle"));
+      } else if (Notification.permission === "denied") {
+        setNotificationStatus("error");
       }
     }
   }, []);
@@ -311,13 +325,9 @@ export default function AdminPage() {
       setNotificationStatus("loading");
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
-        await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
-        const readyRegistration = await navigator.serviceWorker.ready;
-        
         const messaging = getMessaging(defaultApp);
         const token = await getToken(messaging, { 
-          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-          serviceWorkerRegistration: readyRegistration
+          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY
         });
         
         if (token) {
@@ -356,7 +366,10 @@ export default function AdminPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [shipmentForm, setShipmentForm] = useState(null);
   const [orderSubTab, setOrderSubTab] = useState("successful");
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
   const [shippingSubTab, setShippingSubTab] = useState("shipping");
+  const [adminLiveTracking, setAdminLiveTracking] = useState({});
+  const [refreshingStatuses, setRefreshingStatuses] = useState(false);
   const [pendingUploads, setPendingUploads] = useState({});
   const [deletedImages, setDeletedImages] = useState([]);
   const [saveStatus, setSaveStatus] = useState("");
@@ -539,7 +552,7 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (isAdmin && idToken && activeTab === "orders") {
+    if (isAdmin && idToken && (activeTab === "orders" || activeTab === "shipping")) {
       loadOrders(idToken);
     }
   }, [isAdmin, activeTab, idToken]);
@@ -555,10 +568,18 @@ export default function AdminPage() {
     });
   };
 
+  const [couriersList, setCouriersList] = useState([]);
+  const [fetchingCouriers, setFetchingCouriers] = useState(false);
+  const [selectedCourierId, setSelectedCourierId] = useState(null);
+
+  const [scheduleDeliveryForm, setScheduleDeliveryForm] = useState(null);
+
   const submitShipment = async (e) => {
     e.preventDefault();
     if (!shipmentForm || !shipmentForm.order) return;
-    
+
+    setSaveLoading(true);
+    setSaveStatus("Saving shipment details...");
     setSaveLoading(true);
     setSaveStatus("Creating Shiprocket Order...");
     try {
@@ -600,9 +621,58 @@ export default function AdminPage() {
     }
   };
 
-  const handleSchedulePickup = async (orderId, shipmentId) => {
-    if (!confirm("Are you sure you want to schedule delivery (assign courier & generate pickup) for this order?")) return;
-    
+  const handleRefreshStatuses = async (displayedOrders) => {
+    setRefreshingStatuses(true);
+    const trackingUpdates = {};
+    for (const order of displayedOrders) {
+      if (order.shiprocket?.awb_code) {
+        try {
+          const res = await fetch(`/api/shiprocket/track?awb=${order.shiprocket.awb_code}`);
+          const data = await res.json();
+          trackingUpdates[order.orderId || order.id] = data.success ? data.currentStatus : "N/A";
+        } catch (err) {
+          trackingUpdates[order.orderId || order.id] = "Error";
+        }
+      }
+    }
+    setAdminLiveTracking(prev => ({ ...prev, ...trackingUpdates }));
+    setRefreshingStatuses(false);
+  };
+
+  const handleSchedulePickup = async (orderId, shipmentId, shiprocketOrderId) => {
+    setScheduleDeliveryForm({ orderId, shipmentId, shiprocketOrderId });
+    setFetchingCouriers(true);
+    setCouriersList([]);
+    setSelectedCourierId(null);
+    try {
+      const res = await fetch(`/api/admin/shiprocket/couriers?shiprocket_order_id=${shiprocketOrderId}`, {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCouriersList(data.couriers || []);
+        if (data.couriers && data.couriers.length > 0) {
+          setSelectedCourierId(data.couriers[0].courier_company_id);
+        } else {
+          alert("No couriers available for this order.");
+        }
+      } else {
+        throw new Error(data.error || "Failed to fetch couriers");
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    } finally {
+      setFetchingCouriers(false);
+    }
+  };
+
+  const submitSchedulePickup = async (e) => {
+    e.preventDefault();
+    if (!scheduleDeliveryForm || !selectedCourierId) return;
+
+    setSaveLoading(true);
+    setSaveStatus("Scheduling Pickup...");
     try {
       const res = await fetch("/api/admin/shiprocket-pickup", {
         method: "POST",
@@ -610,21 +680,32 @@ export default function AdminPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${idToken}`
         },
-        body: JSON.stringify({ orderId, shipmentId })
+        body: JSON.stringify({ 
+          orderId: scheduleDeliveryForm.orderId, 
+          shipmentId: scheduleDeliveryForm.shipmentId,
+          courierId: selectedCourierId
+        })
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setOrdersList(prev => prev.map(o => 
-          (o.id === orderId || o.orderId === orderId)
+          (o.id === scheduleDeliveryForm.orderId || o.orderId === scheduleDeliveryForm.orderId)
             ? { ...o, status: "SHIPPED", shiprocket: data.shiprocket }
             : o
         ));
         alert("Pickup successfully scheduled! Status is now SHIPPED.");
+        setScheduleDeliveryForm(null);
+        setCouriersList([]);
+        setSelectedCourierId(null);
       } else {
         alert(data.error || "Failed to schedule pickup");
       }
     } catch (err) {
-      alert("Error: " + err.message);
+      console.error(err);
+      alert("Error scheduling pickup");
+    } finally {
+      setSaveLoading(false);
+      setSaveStatus("");
     }
   };
 
@@ -1397,47 +1478,77 @@ export default function AdminPage() {
           <section>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
               <h1 className="admin-title" style={{ marginBottom: 0 }}>Orders</h1>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button
-                  onClick={handleAllowNotifications}
-                  disabled={notificationStatus === "loading" || notificationStatus === "success"}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "8px 16px",
-                    background: notificationStatus === "success" ? "#166534" : "#1f4dd6",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: (notificationStatus === "loading" || notificationStatus === "success") ? "not-allowed" : "pointer",
-                    fontSize: "14px",
-                    fontFamily: "'Google Sans Flex', sans-serif"
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if(!orderSearchQuery.trim()) return;
+                    const foundOrder = ordersList.find(o => 
+                      o.orderId === orderSearchQuery.trim() || 
+                      o.id === orderSearchQuery.trim() ||
+                      o.shiprocket?.shiprocket_order_id == orderSearchQuery.trim()
+                    );
+                    if(foundOrder) {
+                      setSelectedOrder(foundOrder);
+                    } else {
+                      alert("Order not found. Make sure the order is in the current list.");
+                    }
                   }}
+                  style={{ display: "flex", alignItems: "center", border: "1px solid #d1d5db", borderRadius: "6px", overflow: "hidden", background: "#fff" }}
                 >
-                  <Bell size={14} />
-                  {notificationStatus === "loading" ? "Setting up..." : notificationStatus === "success" ? "Notifications Active" : "Allow Notifications"}
-                </button>
-                <button
-                onClick={handleExportOrders}
-                disabled={ordersList.length === 0}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 16px",
-                  background: ordersList.length === 0 ? "#ccc" : "#111",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: ordersList.length === 0 ? "not-allowed" : "pointer",
-                  fontSize: "14px",
-                  fontFamily: "'Google Sans Flex', sans-serif"
-                }}
-              >
-                <Download size={14} />
-                  Export CSV
-                </button>
+                  <input 
+                    type="text" 
+                    placeholder="Search Order ID..." 
+                    value={orderSearchQuery}
+                    onChange={(e) => setOrderSearchQuery(e.target.value)}
+                    style={{ padding: "8px 12px", border: "none", outline: "none", fontSize: "14px", width: "200px" }}
+                  />
+                  <button type="submit" style={{ padding: "8px 12px", background: "#f3f4f6", borderLeft: "1px solid #d1d5db", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Search size={16} />
+                  </button>
+                </form>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    onClick={handleAllowNotifications}
+                    disabled={notificationStatus === "loading" || notificationStatus === "success"}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 16px",
+                      background: notificationStatus === "success" ? "#166534" : "#1f4dd6",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: (notificationStatus === "loading" || notificationStatus === "success") ? "not-allowed" : "pointer",
+                      fontSize: "14px",
+                      fontFamily: "'Google Sans Flex', sans-serif"
+                    }}
+                  >
+                    <Bell size={14} />
+                    {notificationStatus === "loading" ? "Setting up..." : notificationStatus === "success" ? "Notifications Active" : "Allow Notifications"}
+                  </button>
+                  <button
+                    onClick={handleExportOrders}
+                    disabled={ordersList.length === 0}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 16px",
+                      background: ordersList.length === 0 ? "#ccc" : "#111",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: ordersList.length === 0 ? "not-allowed" : "pointer",
+                      fontSize: "14px",
+                      fontFamily: "'Google Sans Flex', sans-serif"
+                    }}
+                  >
+                    <Download size={14} />
+                    Export CSV
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1542,6 +1653,28 @@ export default function AdminPage() {
             <section>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                 <h1 className="admin-title" style={{ marginBottom: 0 }}>Shipping</h1>
+                {shippingSubTab === "shipped" && (
+                  <button 
+                    onClick={() => handleRefreshStatuses(shippedOrders)}
+                    disabled={refreshingStatuses || shippedOrders.length === 0}
+                    style={{
+                      padding: "8px 16px",
+                      background: refreshingStatuses ? "#9ca3af" : "#1f4dd6",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: refreshingStatuses ? "not-allowed" : "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    <Truck size={14} />
+                    {refreshingStatuses ? "Fetching..." : "Refresh Live Statuses"}
+                  </button>
+                )}
               </div>
 
               <div style={{ display: "flex", gap: "2px", marginBottom: "16px", borderBottom: "1px solid #e5e7eb" }}>
@@ -1584,6 +1717,7 @@ export default function AdminPage() {
                         <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Customer</th>
                         <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>AWB Code</th>
                         <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Courier</th>
+                        <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Status</th>
                         <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", textAlign: "center" }}>Actions</th>
                       </tr>
                     </thead>
@@ -1601,12 +1735,15 @@ export default function AdminPage() {
                           <td style={{ padding: "12px 16px", color: "#374151", fontWeight: "500" }}>{order.shippingAddress?.receiverName || order.userName || "N/A"}</td>
                           <td style={{ padding: "12px 16px", color: "#2563eb", fontWeight: "600" }}>{order.shiprocket?.awb_code || "N/A"}</td>
                           <td style={{ padding: "12px 16px", color: "#4b5563" }}>{order.shiprocket?.courier_name || "N/A"}</td>
+                          <td style={{ padding: "12px 16px", color: "#059669", fontWeight: "600" }}>
+                            {adminLiveTracking[order.orderId || order.id] || "N/A"}
+                          </td>
                           <td style={{ padding: "12px 16px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                             {order.status === "SHIPPING" && order.shiprocket?.shipment_id && (
                               <button 
                                 className="admin-btn" 
                                 style={{ background: "#4338ca", color: "#fff", border: "none", fontSize: "12px", padding: "6px 12px" }}
-                                onClick={() => handleSchedulePickup(order.orderId || order.id, order.shiprocket.shipment_id)}
+                                onClick={() => handleSchedulePickup(order.orderId || order.id, order.shiprocket.shipment_id, order.shiprocket.shiprocket_order_id)}
                               >
                                 Schedule Pickup
                               </button>
@@ -2232,10 +2369,58 @@ export default function AdminPage() {
                   Height (cm) *
                   <input type="number" step="1" className="admin-light-input" required value={shipmentForm.height} onChange={(e) => setShipmentForm({ ...shipmentForm, height: e.target.value })} style={{ color: "#111" }} />
                 </label>
-                
                 <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "16px" }}>
                   <button type="button" className="admin-btn" onClick={() => setShipmentForm(null)}>Cancel</button>
                   <button type="submit" className="admin-btn" style={{ background: "#e11d48", color: "#fff", border: "none" }}>Confirm & Ship</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Delivery Modal */}
+      {scheduleDeliveryForm && (
+        <div className="admin-order-modal">
+          <div className="admin-order-modal__overlay" onClick={() => { setScheduleDeliveryForm(null); setCouriersList([]); setSelectedCourierId(null); }} />
+          <div className="admin-order-modal__content" style={{ maxWidth: "500px", width: "95%" }}>
+            <div className="admin-order-modal__header">
+              <h2>Schedule Pickup</h2>
+              <button onClick={() => { setScheduleDeliveryForm(null); setCouriersList([]); setSelectedCourierId(null); }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="admin-order-modal__body" style={{ paddingTop: "16px" }}>
+              <p style={{ marginBottom: "16px", color: "#4b5563" }}>
+                Select a courier service to assign the AWB and schedule pickup for this shipment.
+              </p>
+              
+              <form onSubmit={submitSchedulePickup} className="admin-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px", color: "#111" }}>
+                {fetchingCouriers ? (
+                  <div style={{ textAlign: "center", padding: "20px", color: "#6b7280" }}>Fetching best courier rates...</div>
+                ) : couriersList.length > 0 ? (
+                  <div style={{ marginTop: "16px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "12px", maxHeight: "250px", overflowY: "auto" }}>
+                    <h4 style={{ margin: "0 0 12px", color: "#374151" }}>Select Courier</h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {couriersList.map((c, i) => (
+                        <label key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px", border: "1px solid #e5e7eb", borderRadius: "6px", cursor: "pointer", background: selectedCourierId === c.courier_company_id ? "#eff6ff" : "#fff" }}>
+                          <input type="radio" name="courierSelection" checked={selectedCourierId === c.courier_company_id} onChange={() => setSelectedCourierId(c.courier_company_id)} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: "600", fontSize: "14px", color: "#111" }}>{c.courier_name}</div>
+                            <div style={{ fontSize: "12px", color: "#6b7280" }}>Estimated Delivery: {c.etd}</div>
+                          </div>
+                          <div style={{ fontWeight: "600", color: "#059669" }}>₹{c.display_rate || c.rate}</div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: "center", padding: "20px", color: "#ef4444" }}>No couriers found.</div>
+                )}
+                
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "16px" }}>
+                  <button type="button" className="admin-btn" onClick={() => { setScheduleDeliveryForm(null); setCouriersList([]); setSelectedCourierId(null); }}>Cancel</button>
+                  <button type="submit" className="admin-btn" disabled={!selectedCourierId} style={{ background: selectedCourierId ? "#4338ca" : "#9ca3af", color: "#fff", border: "none", cursor: selectedCourierId ? "pointer" : "not-allowed" }}>Confirm & Schedule Pickup</button>
                 </div>
               </form>
             </div>

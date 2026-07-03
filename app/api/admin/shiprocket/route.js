@@ -23,7 +23,7 @@ export async function POST(request) {
     const shiprocketOrderPayload = {
       order_id: orderId,
       order_date: new Date(orderData.createdAt || Date.now()).toISOString(),
-      pickup_location: "Primary", // Assuming Primary is set up in Shiprocket
+      pickup_location: "Primary", // Matches the Address Nickname in Shiprocket dashboard
       billing_customer_name: orderData.billingAddress?.billingName || orderData.shippingAddress?.receiverName || orderData.userName || "Customer",
       billing_last_name: "",
       billing_address: orderData.billingAddress?.formattedAddress || orderData.shippingAddress?.formattedAddress || "N/A",

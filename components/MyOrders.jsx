@@ -19,6 +19,7 @@ export default function MyOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState(null);
+  const [liveTracking, setLiveTracking] = useState({});
 
   useEffect(() => {
     if (authLoading) return;
@@ -48,9 +49,36 @@ export default function MyOrders() {
         setOrders([]);
       }
     } catch (err) {
-      console.error("Failed to load orders:", err);
+      console.error(err);
+      if (!orders.length) setLoading(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExpand = async (order) => {
+    const isExpanded = expandedOrder === order.id;
+    if (isExpanded) {
+      setExpandedOrder(null);
+      return;
+    }
+    
+    setExpandedOrder(order.id);
+    
+    // Fetch live tracking if we have an AWB and haven't fetched yet
+    if (order.shiprocket?.awb_code && !liveTracking[order.id]) {
+      setLiveTracking(prev => ({ ...prev, [order.id]: { loading: true } }));
+      try {
+        const res = await fetch(`/api/shiprocket/track?awb=${order.shiprocket.awb_code}`);
+        const data = await res.json();
+        if (data.success) {
+          setLiveTracking(prev => ({ ...prev, [order.id]: { loading: false, status: data.currentStatus } }));
+        } else {
+          setLiveTracking(prev => ({ ...prev, [order.id]: { loading: false, status: "N/A" } }));
+        }
+      } catch (err) {
+        setLiveTracking(prev => ({ ...prev, [order.id]: { loading: false, status: "Error" } }));
+      }
     }
   };
 
@@ -107,7 +135,7 @@ export default function MyOrders() {
                 <div key={order.id} className="order-card">
                   <button
                     className="order-card__header"
-                    onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                    onClick={() => handleExpand(order)}
                   >
                     <div className="order-card__main">
                       <div className="order-card__id">
@@ -141,13 +169,21 @@ export default function MyOrders() {
                           </h4>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px", fontSize: "14px" }}>
                             <div>
-                              <p style={{ color: "#64748b", margin: 0, fontSize: "12px" }}>AWB Number</p>
-                              <p style={{ margin: "2px 0 0 0", fontWeight: "600" }}>{order.shiprocket.awb_code || "Processing"}</p>
+                              <span style={{ color: "#64748b", display: "block", fontSize: "12px", marginBottom: "4px" }}>Courier Partner</span>
+                              <strong style={{ color: "#0f172a" }}>{order.shiprocket.courier_name}</strong>
                             </div>
                             <div>
-                              <p style={{ color: "#64748b", margin: 0, fontSize: "12px" }}>Courier</p>
-                              <p style={{ margin: "2px 0 0 0", fontWeight: "600" }}>{order.shiprocket.courier_name || "Assigning..."}</p>
+                              <span style={{ color: "#64748b", display: "block", fontSize: "12px", marginBottom: "4px" }}>Tracking Number</span>
+                              <strong style={{ color: "#0f172a" }}>{order.shiprocket.awb_code}</strong>
                             </div>
+                            {liveTracking[order.id] && (
+                              <div style={{ gridColumn: "span 2", marginTop: "4px", paddingTop: "8px", borderTop: "1px solid #e2e8f0" }}>
+                                <span style={{ color: "#64748b", display: "block", fontSize: "12px", marginBottom: "4px" }}>Live Status</span>
+                                <strong style={{ color: "#059669", fontSize: "15px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                  {liveTracking[order.id].loading ? "Fetching..." : (liveTracking[order.id].status || "N/A")}
+                                </strong>
+                              </div>
+                            )}
                           </div>
                           {order.shiprocket.tracking_url && (
                             <a 
