@@ -22,7 +22,7 @@ export async function POST(request) {
     // 1. Format data for Shiprocket Adhoc Order API
     const shiprocketOrderPayload = {
       order_id: orderId,
-      order_date: new Date(orderData.createdAt).toISOString(),
+      order_date: new Date(orderData.createdAt || Date.now()).toISOString(),
       pickup_location: "Primary", // Assuming Primary is set up in Shiprocket
       billing_customer_name: orderData.billingAddress?.billingName || orderData.shippingAddress?.receiverName || orderData.userName || "Customer",
       billing_last_name: "",
@@ -69,9 +69,11 @@ export async function POST(request) {
     }
 
     // 3. Update the Order in Firebase Database
+    const sanitizedFulfillmentDetails = JSON.parse(JSON.stringify(fulfillmentDetails));
+    
     await adminDb.ref(`orders/${orderId}`).update({
       status: "SHIPPING",
-      shiprocket: fulfillmentDetails,
+      shiprocket: sanitizedFulfillmentDetails,
       updatedAt: new Date().toISOString(),
     });
 
@@ -79,7 +81,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Admin Shiprocket integration error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: error.message || "Internal server error", stack: error.stack },
       { status: 500 }
     );
   }
