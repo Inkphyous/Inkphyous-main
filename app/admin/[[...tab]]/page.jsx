@@ -4,9 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, onIdTokenChanged, getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp, getApps } from "firebase/app";
 import { app as defaultApp } from "@/lib/firebase";
-import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye, EyeOff, CheckCircle, Truck } from "lucide-react";
+import { Plus, Save, Trash2, LogOut, Users, MessageSquare, Download, Package, X, Eye, EyeOff, CheckCircle, Truck, Bell } from "lucide-react";
 import { ref, onValue } from "firebase/database";
+import { getMessaging, getToken } from "firebase/messaging";
 import { db } from "@/lib/firebase";
+import AdminSizeChart from "@/components/admin/AdminSizeChart";
+import AdminLegalities from "@/components/admin/AdminLegalities";
+import { FileText, Ruler } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 
 const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 const COLOR_PALETTE = [
@@ -261,15 +266,90 @@ function ColorEditor({ value, onChange, colors }) {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const pathParts = pathname.split("/");
+  const currentTabFromUrl = pathParts.length > 2 && pathParts[2] ? pathParts[2] : "products";
+
   const [authLoading, setAuthLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [idToken, setIdToken] = useState("");
   const [catalog, setCatalog] = useState(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("products");
+  
+  const [activeTab, setActiveTabState] = useState(currentTabFromUrl);
+
+  useEffect(() => {
+    if (currentTabFromUrl) {
+      setActiveTabState(currentTabFromUrl);
+    }
+    
+    // Handle browser back/forward buttons seamlessly
+    const handlePopState = () => {
+      const parts = window.location.pathname.split("/");
+      const tab = parts.length > 2 && parts[2] ? parts[2] : "products";
+      setActiveTabState(tab);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [currentTabFromUrl]);
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    window.history.pushState(null, "", `/admin/${tab}`);
+  };
   const [usersList, setUsersList] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState("idle");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "granted") {
+        setNotificationStatus("success");
+      }
+    }
+  }, []);
+
+  const handleAllowNotifications = async () => {
+    try {
+      setNotificationStatus("loading");
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+        const messaging = getMessaging(defaultApp);
+        const token = await getToken(messaging, { 
+          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+          serviceWorkerRegistration: registration
+        });
+        
+        if (token) {
+          // Send token to backend
+          const res = await fetch("/api/admin/fcm-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token })
+          });
+          if (res.ok) {
+            setNotificationStatus("success");
+            alert("Notifications enabled! You will now be alerted for new orders.");
+          } else {
+            throw new Error("Failed to save token to database");
+          }
+        } else {
+          throw new Error("No token returned from Firebase.");
+        }
+      } else {
+        setNotificationStatus("error");
+        alert("Permission denied. Please allow notifications in your browser settings.");
+      }
+    } catch (err) {
+      console.error("Error allowing notifications:", err);
+      setNotificationStatus("error");
+      alert(`Failed to enable notifications: ${err.message}. Ensure VAPID key is set in .env.local.`);
+    }
+  };
   const [queriesList, setQueriesList] = useState([]);
   const [queriesLoading, setQueriesLoading] = useState(false);
   const [draft, setDraft] = useState(emptyDraft());
@@ -280,6 +360,7 @@ export default function AdminPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [shipmentForm, setShipmentForm] = useState(null);
   const [orderSubTab, setOrderSubTab] = useState("successful");
+  const [shippingSubTab, setShippingSubTab] = useState("shipping");
   const [pendingUploads, setPendingUploads] = useState({});
   const [deletedImages, setDeletedImages] = useState([]);
   const [saveStatus, setSaveStatus] = useState("");
@@ -506,7 +587,7 @@ export default function AdminPage() {
       if (res.ok && data.success) {
         setOrdersList(prev => prev.map(o => 
           (o.id === (shipmentForm.order.orderId || shipmentForm.order.id))
-            ? { ...o, status: "SHIPPED", shiprocket: data.fulfillmentDetails }
+            ? { ...o, status: "SHIPPING", shiprocket: data.fulfillmentDetails }
             : o
         ));
         setShipmentForm(null);
@@ -520,6 +601,63 @@ export default function AdminPage() {
     } finally {
       setSaveLoading(false);
       setSaveStatus("");
+    }
+  };
+
+  const handleSchedulePickup = async (orderId, shipmentId) => {
+    if (!confirm("Are you sure you want to schedule delivery (assign courier & generate pickup) for this order?")) return;
+    
+    try {
+      const res = await fetch("/api/admin/shiprocket-pickup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ orderId, shipmentId })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOrdersList(prev => prev.map(o => 
+          (o.id === orderId || o.orderId === orderId)
+            ? { ...o, status: "SHIPPED", shiprocket: data.shiprocket }
+            : o
+        ));
+        alert("Pickup successfully scheduled! Status is now SHIPPED.");
+      } else {
+        alert(data.error || "Failed to schedule pickup");
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  const handleCancelShipping = async (orderId, shiprocketOrderId) => {
+    if (!confirm("Are you sure you want to cancel this shipping request? This will cancel the order in Shiprocket and mark it as CANCELLED.")) return;
+    
+    try {
+      const res = await fetch("/api/admin/shiprocket-cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ orderId, shiprocketOrderId })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOrdersList(prev => prev.map(o => 
+          (o.id === orderId || o.orderId === orderId)
+            ? { ...o, status: "CANCELLED" }
+            : o
+        ));
+        setSelectedOrder(null);
+        alert("Shipping successfully cancelled!");
+      } else {
+        alert(data.error || "Failed to cancel shipping");
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
     }
   };
 
@@ -566,8 +704,33 @@ export default function AdminPage() {
       } else {
         alert(data.error || "Failed to update order");
       }
-    } catch (e) {
+    } catch (err) {
+      console.error(err);
       alert("Error updating order status");
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!confirm("Are you sure you want to cancel this order?")) return;
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ orderId, status: "CANCELLED" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrdersList(prev => prev.map(o => o.id === orderId || o.orderId === orderId ? { ...o, status: "CANCELLED" } : o));
+        setSelectedOrder(prev => prev && (prev.id === orderId || prev.orderId === orderId) ? { ...prev, status: "CANCELLED" } : prev);
+      } else {
+        alert(data.error || "Failed to cancel order");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error canceling order");
     }
   };
 
@@ -1003,6 +1166,20 @@ export default function AdminPage() {
           <Truck size={14} />
           Shipping
         </button>
+        <button
+          className={`admin-sidebar__btn ${activeTab === "size_chart" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("size_chart")}
+        >
+          <Ruler size={14} />
+          Size Chart
+        </button>
+        <button
+          className={`admin-sidebar__btn ${activeTab === "legalities" ? "is-active" : ""}`}
+          onClick={() => setActiveTab("legalities")}
+        >
+          <FileText size={14} />
+          Legalities
+        </button>
         <div style={{ flexGrow: 1 }} />
         <button
           className="admin-sidebar__btn"
@@ -1015,6 +1192,9 @@ export default function AdminPage() {
       </aside>
 
       <main className="admin-main">
+        {activeTab === "size_chart" && <AdminSizeChart />}
+        {activeTab === "legalities" && <AdminLegalities />}
+        
         {activeTab === "products" && (
           <section>
             <h1 className="admin-title">Products</h1>
@@ -1159,6 +1339,7 @@ export default function AdminPage() {
                       <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Email</th>
                       <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Subject</th>
                       <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Message</th>
+                      <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Attachment</th>
                       <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", width: "60px", textAlign: "center" }}>Actions</th>
                     </tr>
                   </thead>
@@ -1172,6 +1353,15 @@ export default function AdminPage() {
                         <td style={{ padding: "12px 16px", color: "#374151" }}>{q.email}</td>
                         <td style={{ padding: "12px 16px", color: "#374151", fontWeight: "500" }}>{q.subject}</td>
                         <td style={{ padding: "12px 16px", color: "#4b5563", fontSize: "14px", minWidth: "300px" }}>{q.message}</td>
+                        <td style={{ padding: "12px 16px" }}>
+                          {q.attachmentUrl ? (
+                            <a href={q.attachmentUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", border: "1px solid #d1d5db", borderRadius: "4px", overflow: "hidden", lineHeight: 0 }}>
+                              <img src={q.attachmentUrl} alt="Attachment" style={{ width: "40px", height: "40px", objectFit: "cover" }} />
+                            </a>
+                          ) : (
+                            <span style={{ color: "#9ca3af", fontSize: "12px" }}>None</span>
+                          )}
+                        </td>
                         <td style={{ padding: "12px 16px", textAlign: "center" }}>
                           <button
                             onClick={() => handleDeleteQuery(q.id)}
@@ -1193,9 +1383,17 @@ export default function AdminPage() {
         {activeTab === "orders" && (() => {
           const displayedOrders = ordersList.filter(o => {
             const isSuccess = ["SUCCESS", "COMPLETED", "PAYMENT_SUCCESS"].includes(o.status);
+            const isShippingOrShipped = o.status === "SHIPPING" || o.status === "SHIPPED";
+            
+            // Exclude from Orders tab entirely
+            if (isShippingOrShipped) return false;
+
             if (orderSubTab === "successful") return isSuccess;
-            if (orderSubTab === "others") return !isSuccess && o.status !== "SHIPPED";
-            return o.status !== "SHIPPED";
+            if (orderSubTab === "cancelled") return o.status === "CANCELLED";
+            if (orderSubTab === "others") return !isSuccess && o.status !== "CANCELLED";
+            
+            // "all" tab
+            return true;
           });
 
 
@@ -1203,7 +1401,28 @@ export default function AdminPage() {
           <section>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
               <h1 className="admin-title" style={{ marginBottom: 0 }}>Orders</h1>
-              <button
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  onClick={handleAllowNotifications}
+                  disabled={notificationStatus === "loading" || notificationStatus === "success"}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 16px",
+                    background: notificationStatus === "success" ? "#166534" : "#1f4dd6",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: (notificationStatus === "loading" || notificationStatus === "success") ? "not-allowed" : "pointer",
+                    fontSize: "14px",
+                    fontFamily: "'Google Sans Flex', sans-serif"
+                  }}
+                >
+                  <Bell size={14} />
+                  {notificationStatus === "loading" ? "Setting up..." : notificationStatus === "success" ? "Notifications Active" : "Allow Notifications"}
+                </button>
+                <button
                 onClick={handleExportOrders}
                 disabled={ordersList.length === 0}
                 style={{
@@ -1221,12 +1440,13 @@ export default function AdminPage() {
                 }}
               >
                 <Download size={14} />
-                Export CSV
-              </button>
+                  Export CSV
+                </button>
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: "2px", marginBottom: "16px", borderBottom: "1px solid #e5e7eb" }}>
-              {["all", "successful", "others"].map(tab => (
+              {["all", "successful", "cancelled", "others"].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setOrderSubTab(tab)}
@@ -1316,45 +1536,92 @@ export default function AdminPage() {
         })()}
 
         {activeTab === "shipping" && (() => {
-          const shippedOrders = ordersList.filter(o => o.status === "SHIPPED");
+          const shippedOrders = ordersList.filter(o => {
+            if (shippingSubTab === "shipping") return o.status === "SHIPPING";
+            if (shippingSubTab === "shipped") return o.status === "SHIPPED";
+            return false;
+          });
           
           return (
             <section>
-              <h1 className="admin-title">Shipping</h1>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                <h1 className="admin-title" style={{ marginBottom: 0 }}>Shipping</h1>
+              </div>
+
+              <div style={{ display: "flex", gap: "2px", marginBottom: "16px", borderBottom: "1px solid #e5e7eb" }}>
+                {["shipping", "shipped"].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setShippingSubTab(tab)}
+                    style={{
+                      padding: "8px 20px",
+                      background: shippingSubTab === tab ? "white" : "#f3f4f6",
+                      border: "1px solid #e5e7eb",
+                      borderBottom: "none",
+                      borderTop: shippingSubTab === tab ? "3px solid #e11d48" : "1px solid #e5e7eb",
+                      borderRadius: "6px 6px 0 0",
+                      fontWeight: shippingSubTab === tab ? "600" : "500",
+                      color: shippingSubTab === tab ? "#111" : "#6b7280",
+                      cursor: "pointer",
+                      textTransform: "capitalize",
+                      position: "relative",
+                      marginTop: shippingSubTab === tab ? "-2px" : "0",
+                      zIndex: shippingSubTab === tab ? 1 : 0
+                    }}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
               {ordersLoading ? (
                 <p className="admin-muted">Loading...</p>
               ) : shippedOrders.length === 0 ? (
-                <p className="admin-muted">No shipped orders found.</p>
+                <p className="admin-muted">No {shippingSubTab} orders found.</p>
               ) : (
-                <div className="admin-table-wrap">
-                  <table className="admin-table">
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: "8px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
                     <thead>
-                      <tr>
-                        <th>Order ID</th>
-                        <th>Date</th>
-                        <th>Customer</th>
-                        <th>AWB Code</th>
-                        <th>Courier</th>
-                        <th>Actions</th>
+                      <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
+                        <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Order ID</th>
+                        <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Date</th>
+                        <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Customer</th>
+                        <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>AWB Code</th>
+                        <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151" }}>Courier</th>
+                        <th style={{ padding: "12px 16px", fontWeight: "600", color: "#374151", textAlign: "center" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {shippedOrders.map((order) => (
-                        <tr key={order.orderId || order.id}>
-                          <td style={{ fontWeight: "600" }}>{order.orderId || order.id}</td>
-                          <td>{new Date(order.createdAt).toLocaleString()}</td>
-                          <td>{order.shippingAddress?.receiverName || order.userName || "N/A"}</td>
-                          <td style={{ fontWeight: "600", color: "#2563eb" }}>{order.shiprocket?.awb_code || "N/A"}</td>
-                          <td>{order.shiprocket?.courier_name || "N/A"}</td>
-                          <td>
-                            <button className="admin-btn" onClick={() => setSelectedOrder(order)}>View</button>
+                      {shippedOrders.map((order, i) => (
+                        <tr 
+                          key={order.orderId || order.id} 
+                          onClick={() => setSelectedOrder(order)}
+                          style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: i % 2 === 0 ? "white" : "#fcfcfc", cursor: "pointer", transition: "background-color 0.2s" }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3f4f6"}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = i % 2 === 0 ? "white" : "#fcfcfc"}
+                        >
+                          <td style={{ padding: "12px 16px", color: "#111827", fontWeight: "600" }}>{order.orderId || order.id}</td>
+                          <td style={{ padding: "12px 16px", color: "#4b5563" }}>{new Date(order.createdAt).toLocaleString()}</td>
+                          <td style={{ padding: "12px 16px", color: "#374151", fontWeight: "500" }}>{order.shippingAddress?.receiverName || order.userName || "N/A"}</td>
+                          <td style={{ padding: "12px 16px", color: "#2563eb", fontWeight: "600" }}>{order.shiprocket?.awb_code || "N/A"}</td>
+                          <td style={{ padding: "12px 16px", color: "#4b5563" }}>{order.shiprocket?.courier_name || "N/A"}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                            {order.status === "SHIPPING" && order.shiprocket?.shipment_id && (
+                              <button 
+                                className="admin-btn" 
+                                style={{ background: "#4338ca", color: "#fff", border: "none", fontSize: "12px", padding: "6px 12px" }}
+                                onClick={() => handleSchedulePickup(order.orderId || order.id, order.shiprocket.shipment_id)}
+                              >
+                                Schedule Pickup
+                              </button>
+                            )}
                             {order.shiprocket?.tracking_url && (
                               <a 
                                 href={order.shiprocket.tracking_url} 
                                 target="_blank" 
                                 rel="noreferrer"
                                 className="admin-btn" 
-                                style={{ marginLeft: "8px", textDecoration: "none" }}
+                                style={{ marginLeft: "8px", textDecoration: "none", background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", fontSize: "12px", padding: "5px 12px" }}
                               >
                                 Track
                               </a>
@@ -1844,7 +2111,7 @@ export default function AdminPage() {
                     <span style={{ padding: "4px 12px", borderRadius: "16px", fontSize: "13px", fontWeight: "600", background: selectedOrder.status === "SUCCESS" ? "#dcfce7" : selectedOrder.status === "FAILED" ? "#fee2e2" : "#fef9c3", color: selectedOrder.status === "SUCCESS" ? "#166534" : selectedOrder.status === "FAILED" ? "#991b1b" : "#854d0e" }}>
                       {selectedOrder.status || "PENDING"}
                     </span>
-                    {selectedOrder.status !== "SUCCESS" && selectedOrder.status !== "SHIPPED" && (
+                    {selectedOrder.status !== "SUCCESS" && selectedOrder.status !== "SHIPPED" && selectedOrder.status !== "SHIPPING" && (
                       <button
                         className="admin-btn"
                         style={{ padding: "6px 14px", background: "#111", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
@@ -1853,14 +2120,32 @@ export default function AdminPage() {
                         <CheckCircle size={14} /> Mark as Success
                       </button>
                     )}
-                    {selectedOrder.status === "SUCCESS" && (
+                    {selectedOrder.status === "SHIPPING" && selectedOrder.shiprocket?.shiprocket_order_id && (
                       <button
                         className="admin-btn"
-                        style={{ padding: "6px 14px", background: "#e11d48", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
-                        onClick={() => setShipmentForm({ order: selectedOrder, weight: 0.5, length: 20, breadth: 20, height: 10 })}
+                        style={{ padding: "6px 14px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                        onClick={() => handleCancelShipping(selectedOrder.orderId || selectedOrder.id, selectedOrder.shiprocket.shiprocket_order_id)}
                       >
-                        <Truck size={14} /> Move to Shipment
+                        <Trash2 size={14} /> Cancel Shipping
                       </button>
+                    )}
+                    {selectedOrder.status === "SUCCESS" && (
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          className="admin-btn"
+                          style={{ padding: "6px 14px", background: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                          onClick={() => handleCancelOrder(selectedOrder.orderId || selectedOrder.id)}
+                        >
+                          <X size={14} /> Cancel Order
+                        </button>
+                        <button
+                          className="admin-btn"
+                          style={{ padding: "6px 14px", background: "#111", color: "#fff", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                          onClick={() => setShipmentForm({ order: selectedOrder, weight: 0.5, length: 20, breadth: 20, height: 10 })}
+                        >
+                          <Truck size={14} /> Move to Shipment
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

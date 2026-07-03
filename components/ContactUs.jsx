@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ArrowLeft } from "lucide-react";
+import { ChevronDown, ArrowLeft, Paperclip, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useStore } from "./providers/StoreProvider";
 import { db } from "@/lib/firebase";
 import { ref, push, serverTimestamp } from "firebase/database";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const FloatingInput = ({ value, onChange, placeholder, type = "text" }) => {
   return (
@@ -123,26 +124,67 @@ const ContactUs = () => {
   const [selectedSubject, setSelectedSubject] = useState("");
   const [isSubjectOpen, setIsSubjectOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null); // null | 'success' | 'error'
+  const [submitStatus, setSubmitStatus] = useState(null);
+  const [attachment, setAttachment] = useState(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   const subjects = [
-    "General Inquiry",
-    "Order Status",
+    "Customer Service",
     "Return & Exchange",
-    "Damages",
     "My Account",
     "Cancellation Request",
     "Others"
   ];
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size exceeds 10MB limit.");
+      e.target.value = "";
+      return;
+    }
+    setAttachment(file);
+  };
 
   const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !message.trim() || !selectedSubject.trim()) return;
     
     setIsSubmitting(true);
     setSubmitStatus(null);
+    let attachmentUrl = null;
+
     try {
+      if (attachment) {
+        setUploadingAttachment(true);
+        const supabase = getSupabaseBrowserClient();
+        if (supabase) {
+          const fileExt = attachment.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `queries/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('contact-attachments')
+            .upload(filePath, attachment, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) {
+            console.error("Supabase upload error:", uploadError);
+            throw new Error(`Failed to upload attachment: ${uploadError.message}`);
+          }
+          
+          const { data: { publicUrl } } = supabase.storage
+            .from('contact-attachments')
+            .getPublicUrl(filePath);
+            
+          attachmentUrl = publicUrl;
+        }
+        setUploadingAttachment(false);
+      }
+
       const queriesRef = ref(db, 'queries');
       await push(queriesRef, {
         name: name.trim(),
@@ -150,17 +192,21 @@ const ContactUs = () => {
         subject: selectedSubject.trim(),
         message: message.trim(),
         status: 'pending',
-        timestamp: serverTimestamp()
+        timestamp: serverTimestamp(),
+        ...(attachmentUrl ? { attachmentUrl } : {})
       });
       setSubmitStatus('success');
       setName("");
       setEmail("");
       setMessage("");
       setSelectedSubject("");
+      setAttachment(null);
       setTimeout(() => setSubmitStatus(null), 5000);
     } catch (error) {
-      console.error("Error submitting query:", error);
+      console.error('Error submitting query:', error);
       setSubmitStatus('error');
+      alert(error.message || "Failed to submit query.");
+      setUploadingAttachment(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -224,7 +270,7 @@ const ContactUs = () => {
         
         {/* TOP TEXT SECTION */}
         <div style={{ marginBottom: "60px" }}>
-          <h1 style={{ fontSize: "36px", letterSpacing: "4px", marginBottom: "40px", fontFamily: "var(--font-brand)", fontWeight: "normal", color: "#000" }}>CONTACT</h1>
+          <h1 style={{ fontSize: "36px", letterSpacing: "4px", marginBottom: "40px", fontFamily: "var(--font-brand)", fontWeight: "normal", color: "#000", textAlign: isMobile ? "center" : "left" }}>CONTACT</h1>
           
           <h2 style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "500", marginBottom: "8px", fontFamily: "var(--font-heading)", color: "#000" }}>ENQUIRIES</h2>
           <a href="mailto:info@inkphyous.com" style={{ fontSize: "11px", letterSpacing: "2px", fontWeight: "normal", marginBottom: "40px", fontFamily: "var(--font-heading)", color: "#e11d48", textDecoration: "none", display: "inline-block" }}>INFO@INKPHYOUS.COM</a>
@@ -243,6 +289,7 @@ const ContactUs = () => {
             <div style={{ height: "45px", display: "flex", alignItems: "center" }}><span style={labelStyle}>SUBJECT</span></div>
             <div style={{ height: "45px", display: "flex", alignItems: "center" }}><span style={labelStyle}>EMAIL</span></div>
             <div style={{ height: "150px", display: "flex", alignItems: "flex-start", paddingTop: "14px" }}><span style={labelStyle}>MESSAGE</span></div>
+            <div style={{ height: "45px", display: "flex", alignItems: "center" }}><span style={labelStyle}>ATTACHMENT</span></div>
             <div style={{ height: "45px" }}></div>
           </div>
 
@@ -279,30 +326,71 @@ const ContactUs = () => {
               onChange={(e) => setMessage(e.target.value)}
             />
 
-            <button
-              onClick={handleSubmit}
-              disabled={!isFilled || isSubmitting}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-              style={{
-                width: "100%",
-                height: "45px",
-                backgroundColor: !isFilled ? "transparent" : (isHovered ? "#e11d48" : "#000"),
-                color: !isFilled ? (isHovered ? "#e11d48" : "#000") : "#fff",
-                border: !isFilled ? (isHovered ? "1px solid #e11d48" : "1px solid #000") : (isHovered ? "1px solid #e11d48" : "1px solid #000"),
-                fontSize: "11px",
-                fontWeight: "600",
-                letterSpacing: "2px",
-                fontFamily: "var(--font-heading)",
-                textTransform: "uppercase",
-                cursor: (!isFilled || isSubmitting) ? "not-allowed" : "pointer",
-                transition: "all 0.3s ease",
-                margin: 0,
-                opacity: isSubmitting ? 0.7 : 1
-              }}
-            >
-              {isSubmitting ? "SENDING..." : "SEND"}
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                <label 
+                  style={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center", 
+                    gap: "8px",
+                    width: "100%", 
+                    height: "45px", 
+                    border: "1px dashed #d1d5db", 
+                    borderRadius: "4px", 
+                    cursor: "pointer", 
+                    background: attachment ? "#fdf2f8" : "transparent", 
+                    color: attachment ? "#e11d48" : "#6b7280", 
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    letterSpacing: "2px",
+                    fontFamily: "var(--font-heading)",
+                    textTransform: "uppercase",
+                    transition: "all 0.2s" 
+                  }} 
+                  title={attachment ? "Change Attachment" : "Add Photo"}
+                >
+                  <Paperclip size={16} />
+                  {attachment ? attachment.name : "UPLOAD PHOTO (OPTIONAL)"}
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChange} />
+                </label>
+
+                {attachment && (
+                  <button 
+                    onClick={() => setAttachment(null)} 
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} 
+                    title="Remove Attachment"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                disabled={!isFilled || isSubmitting || uploadingAttachment}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                style={{
+                  width: "100%",
+                  height: "45px",
+                  backgroundColor: !isFilled ? "transparent" : (isHovered ? "#e11d48" : "#000"),
+                  color: !isFilled ? (isHovered ? "#e11d48" : "#000") : "#fff",
+                  border: !isFilled ? (isHovered ? "1px solid #e11d48" : "1px solid #000") : (isHovered ? "1px solid #e11d48" : "1px solid #000"),
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  letterSpacing: "2px",
+                  fontFamily: "var(--font-heading)",
+                  textTransform: "uppercase",
+                  cursor: (!isFilled || isSubmitting || uploadingAttachment) ? "not-allowed" : "pointer",
+                  transition: "all 0.3s ease",
+                  margin: 0,
+                  opacity: (isSubmitting || uploadingAttachment) ? 0.7 : 1
+                }}
+              >
+                {uploadingAttachment ? "UPLOADING..." : (isSubmitting ? "SUBMITTING..." : "SUBMIT")}
+              </button>
+            </div>
             
             {submitStatus === 'success' && (
               <div style={{ color: "#2f8f48", fontSize: "12px", fontWeight: "bold", fontFamily: "var(--font-heading)", letterSpacing: "1px", textAlign: "center" }}>

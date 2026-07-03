@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, isValidElement } from "react";
+import React, { useState, useEffect, isValidElement } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Heart, ShoppingCart, ChevronDown, Share2 } from "lucide-react";
@@ -90,49 +91,69 @@ function MobileAccordion({ title, content, isOpen, onClick }) {
   );
 }
 
-const SizeChartContent = () => (
-  <div style={{ padding: "16px", backgroundColor: "#fff", borderRadius: "8px" }}>
-    <p style={{ marginBottom: "16px", color: "#555", fontSize: "14px", lineHeight: "1.5" }}>
-      To assist you in selecting the most accurate fit, please refer to the product measurement details provided for each item.
-    </p>
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
-        <thead>
-          <tr>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>Size</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>S</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>M</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>L</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>XL</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Chest</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19.5"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20.5"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21.5"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>22.5"</td>
-          </tr>
-          <tr>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Shoulder</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>18"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21"</td>
-          </tr>
-          <tr>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Length</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>28"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>29"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>30"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>31"</td>
-          </tr>
-        </tbody>
-      </table>
+const SizeChartContent = ({ category }) => {
+  const [chartData, setChartData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchChart = async () => {
+      if (!category) return;
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      const { data } = await supabase.from("size_charts").select("chart_data").eq("category", category).single();
+      if (data && data.chart_data) {
+        setChartData(data.chart_data);
+      } else {
+        // Fallback to default structure if category not found
+        setChartData({
+          columns: ["Size", "S", "M", "L", "XL"],
+          rows: [
+            { label: "Chest", values: ["19.5\"", "20.5\"", "21.5\"", "22.5\""] },
+            { label: "Shoulder", values: ["18\"", "19\"", "20\"", "21\""] },
+            { label: "Length", values: ["28\"", "29\"", "30\"", "31\""] }
+          ]
+        });
+      }
+      setLoading(false);
+    };
+    fetchChart();
+  }, [category]);
+
+  if (loading) return <div style={{ padding: "16px", color: "#555", fontSize: "14px" }}>Loading size chart...</div>;
+
+  return (
+    <div style={{ padding: "16px", backgroundColor: "transparent", borderRadius: "8px" }}>
+      <p style={{ marginBottom: "16px", color: "#555", fontSize: "14px", lineHeight: "1.5" }}>
+        To assist you in selecting the most accurate fit, please refer to the product measurement details provided for each item.
+      </p>
+      {chartData && (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
+            <thead>
+              <tr>
+                {chartData.columns.map((col, idx) => (
+                  <th key={idx} style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "transparent" }}>
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {chartData.rows.map((row, rIdx) => (
+                <tr key={rIdx}>
+                  <td style={{ padding: "12px", border: "1px solid #ddd" }}>{row.label}</td>
+                  {row.values.map((val, cIdx) => (
+                    <td key={cIdx} style={{ padding: "12px", border: "1px solid #ddd" }}>{val}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export default function MobilePDP({
   product,
@@ -207,7 +228,6 @@ export default function MobilePDP({
                   fontSize: "28px",
                   fontWeight: 800,
                   letterSpacing: "1px",
-                  textTransform: "uppercase",
                   color: "var(--color-text)",
                   margin: 0,
                   lineHeight: 1,
@@ -217,8 +237,8 @@ export default function MobilePDP({
               </h1>
               <span
                 style={{
-                  fontFamily: "var(--font-heading)",
-                  fontSize: "18px",
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: "24px",
                   fontWeight: 800,
                   color: "transparent",
                   WebkitTextStroke: "1px #e11d48",
@@ -321,12 +341,12 @@ export default function MobilePDP({
               cursor: "pointer",
               border:
                 selectedSize === size
-                  ? "2px solid #000"
+                  ? "2px solid #e11d48"
                   : "1.5px solid #ccc",
               backgroundColor: !inStock
                 ? "#f5f5f5"
                 : selectedSize === size
-                ? "#000"
+                ? "#e11d48"
                 : "transparent",
               color: !inStock
                 ? "#bbb"
@@ -358,7 +378,7 @@ export default function MobilePDP({
       >
         <motion.div
           onClick={isDisabled ? undefined : onAddToCart}
-          whileTap={isDisabled ? {} : { scale: 0.97 }}
+          whileTap={isDisabled ? {} : { scale: 0.97, backgroundColor: "#e11d48", borderColor: "#e11d48" }}
           style={{
             flex: "1 1 0%",
             minWidth: 0,
@@ -540,7 +560,7 @@ export default function MobilePDP({
       />
       <MobileAccordion
         title="Size Chart"
-        content={<SizeChartContent />}
+        content={<SizeChartContent category={product?.category || product?.subcategory || "Jerseys"} />}
         isOpen={activeAccordion === "size-chart"}
         onClick={() =>
           setActiveAccordion(

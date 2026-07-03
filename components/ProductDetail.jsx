@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Heart, ShoppingCart, ChevronDown, ChevronLeft, ChevronRight, X, Share2 } from "lucide-react";
 import { useStore } from "./providers/StoreProvider";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import Footer from "./Footer";
 import MobilePDP from "./MobilePDP";
 
@@ -57,49 +58,69 @@ function Accordion({ title, content, isOpen, onClick }) {
   );
 }
 
-const SizeChartContent = () => (
-  <div style={{ padding: "16px", backgroundColor: "#fff", borderRadius: "8px" }}>
-    <p style={{ marginBottom: "16px", color: "#555", fontSize: "14px", lineHeight: "1.5" }}>
-      To assist you in selecting the most accurate fit, please refer to the product measurement details provided for each item.
-    </p>
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
-        <thead>
-          <tr>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>Size</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>S</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>M</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>L</th>
-            <th style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "#f9f9f9" }}>XL</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Chest</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19.5"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20.5"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21.5"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>22.5"</td>
-          </tr>
-          <tr>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Shoulder</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>18"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>19"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>20"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>21"</td>
-          </tr>
-          <tr>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>Length</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>28"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>29"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>30"</td>
-            <td style={{ padding: "12px", border: "1px solid #ddd" }}>31"</td>
-          </tr>
-        </tbody>
-      </table>
+const SizeChartContent = ({ category }) => {
+  const [chartData, setChartData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchChart = async () => {
+      if (!category) return;
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      const { data } = await supabase.from("size_charts").select("chart_data").eq("category", category).single();
+      if (data && data.chart_data) {
+        setChartData(data.chart_data);
+      } else {
+        // Fallback to default structure if category not found
+        setChartData({
+          columns: ["Size", "S", "M", "L", "XL"],
+          rows: [
+            { label: "Chest", values: ["19.5\"", "20.5\"", "21.5\"", "22.5\""] },
+            { label: "Shoulder", values: ["18\"", "19\"", "20\"", "21\""] },
+            { label: "Length", values: ["28\"", "29\"", "30\"", "31\""] }
+          ]
+        });
+      }
+      setLoading(false);
+    };
+    fetchChart();
+  }, [category]);
+
+  if (loading) return <div style={{ padding: "16px", color: "#555", fontSize: "14px" }}>Loading size chart...</div>;
+
+  return (
+    <div style={{ padding: "16px", backgroundColor: "transparent", borderRadius: "8px" }}>
+      <p style={{ marginBottom: "16px", color: "#555", fontSize: "14px", lineHeight: "1.5" }}>
+        To assist you in selecting the most accurate fit, please refer to the product measurement details provided for each item.
+      </p>
+      {chartData && (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px", color: "#333" }}>
+            <thead>
+              <tr>
+                {chartData.columns.map((col, idx) => (
+                  <th key={idx} style={{ padding: "12px", border: "1px solid #ddd", fontWeight: "500", backgroundColor: "transparent" }}>
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {chartData.rows.map((row, rIdx) => (
+                <tr key={rIdx}>
+                  <td style={{ padding: "12px", border: "1px solid #ddd" }}>{row.label}</td>
+                  {row.values.map((val, cIdx) => (
+                    <td key={cIdx} style={{ padding: "12px", border: "1px solid #ddd" }}>{val}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export default function ProductDetail() {
   const {
@@ -727,7 +748,7 @@ export default function ProductDetail() {
                     </ul>
                   }
                     isOpen={activeAccordion === "shipping"} onClick={() => setActiveAccordion(activeAccordion === "shipping" ? null : "shipping")} />
-                  <Accordion title="Size Chart" content={<SizeChartContent />}
+                  <Accordion title="Size Chart" content={<SizeChartContent category={product?.category || product?.subcategory || "Jerseys"} />}
                     isOpen={activeAccordion === "size-chart"} onClick={() => setActiveAccordion(activeAccordion === "size-chart" ? null : "size-chart")} />
 
 

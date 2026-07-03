@@ -70,7 +70,7 @@ export async function POST(request) {
 
     // 3. Update the Order in Firebase Database
     await adminDb.ref(`orders/${orderId}`).update({
-      status: "SHIPPED",
+      status: "SHIPPING",
       shiprocket: fulfillmentDetails,
       updatedAt: new Date().toISOString(),
     });

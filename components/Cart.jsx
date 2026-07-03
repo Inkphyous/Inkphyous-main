@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "./providers/StoreProvider";
 import { ArrowLeft, Printer, Heart, Plus, X, ChevronDown } from "lucide-react";
+import { motion } from "framer-motion";
 import { useEffect } from "react";
 
 const Cart = () => {
@@ -345,16 +346,17 @@ const Cart = () => {
               </div>
             </div>
 
-            <button 
+            <motion.button 
               className="cart-edit-modal__save" 
               disabled={!editingItem.selectedSize}
+              whileTap={!editingItem.selectedSize ? {} : { scale: 0.97, backgroundColor: "#e11d48", borderColor: "#e11d48", color: "#fff" }}
               onClick={async () => {
                 await editCartItem(editingItem.item.cartItemId, editingItem.selectedVariant.id, editingItem.selectedSize);
                 setEditingItem(null);
               }}
             >
-              {t("saveChanges") || "Save Changes"}
-            </button>
+              {t("Save changes") || "Save Changes"}
+            </motion.button>
           </div>
         </div>
       )}

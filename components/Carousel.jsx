@@ -30,13 +30,12 @@ export default function Carousel() {
   const directionRef = useRef(1); // 1 = next (up), -1 = prev (down)
   const touchRef = useRef({ active: false, startX: 0, startY: 0, dx: 0, dy: 0 });
 
-  if (products.length === 0) return null;
-
   // Calculate direction synchronously during render so Framer Motion
   // gets the exact correct direction before the exit animation starts.
   if (activeIndex !== prevIndexRef.current) {
-    const diff = (activeIndex - prevIndexRef.current + products.length) % products.length;
-    directionRef.current = diff <= products.length / 2 ? 1 : -1;
+    const len = products.length || 1;
+    const diff = (activeIndex - prevIndexRef.current + len) % len;
+    directionRef.current = diff <= len / 2 ? 1 : -1;
     prevIndexRef.current = activeIndex;
   }
   
@@ -46,7 +45,8 @@ export default function Carousel() {
   useEffect(() => {
     if (viewMode !== "carousel") return;
     autoPlayRef.current = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % products.length);
+      const len = products.length || 1;
+      setActiveIndex((prev) => (prev + 1) % len);
     }, 4000);
     return () => clearInterval(autoPlayRef.current);
   }, [viewMode, products.length, setActiveIndex]);
@@ -55,7 +55,8 @@ export default function Carousel() {
     clearInterval(autoPlayRef.current);
     if (viewMode === "carousel") {
       autoPlayRef.current = setInterval(() => {
-        setActiveIndex((prev) => (prev + 1) % products.length);
+        const len = products.length || 1;
+        setActiveIndex((prev) => (prev + 1) % len);
       }, 4000);
     }
   }, [viewMode, products.length, setActiveIndex]);
@@ -185,7 +186,7 @@ export default function Carousel() {
   };
 
   const getProductSlot = (i) => {
-    const len = products.length;
+    const len = products.length || 1;
     let delta = ((i - activeIndex) % len + len) % len;
     if (delta > len / 2) delta -= len;
 
@@ -361,7 +362,7 @@ export default function Carousel() {
     }),
   };
 
-  if (!activeProduct || viewMode === "grid") return null;
+  if (products.length === 0 || !activeProduct || viewMode === "grid") return null;
 
   let homeDotSizes = [6, 10, 6];
   if (!isPDP && transitioning) {

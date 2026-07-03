@@ -69,7 +69,35 @@ export function StoreProvider({ children }) {
   const [wishlistItems, setWishlistItems] = useState([]);
 
   const [language, setLanguage] = useState("en");
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntroState, setShowIntroState] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isRoot = window.location.pathname === "/";
+      const searchParams = new URLSearchParams(window.location.search);
+      const isPDP = searchParams.has("productId") || searchParams.has("variantId");
+      const isPDPSession = sessionStorage.getItem("inkViewMode") === "pdp";
+      
+      // Show intro ONLY on the pure home page (no PDP params and not returning to PDP).
+      if (!isRoot || isPDP || isPDPSession) {
+        setShowIntroState(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("inkViewMode", viewMode);
+      if (pdpProductId) sessionStorage.setItem("inkProductId", pdpProductId);
+      if (pdpVariantId) sessionStorage.setItem("inkVariantId", pdpVariantId);
+    }
+  }, [viewMode, pdpProductId, pdpVariantId]);
+
+  const setShowIntro = useCallback((val) => {
+    setShowIntroState(val);
+  }, []);
+
+  const showIntro = showIntroState;
   const [contactPopupOpen, setContactPopupOpen] = useState(false);
 
   const [user, setUser] = useState(null);
@@ -193,6 +221,13 @@ export function StoreProvider({ children }) {
       setPdpVariantIdState(variant?.id || null);
       setPdpCategoryVacantLeft(vacantLeft);
       setViewMode("pdp");
+
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          const newUrl = `/?productId=${product.id}&variantId=${variant?.id || ""}`;
+          window.history.pushState(null, "", newUrl);
+        }, 500);
+      }
     },
     [filteredProducts, products, colorMap, viewMode]
   );
@@ -230,6 +265,13 @@ export function StoreProvider({ children }) {
 
   const closePDP = useCallback(() => {
     setViewMode(prevViewMode === "pdp" ? "carousel" : prevViewMode);
+    
+    if (typeof window !== "undefined") {
+      setTimeout(() => {
+        window.history.pushState(null, "", "/");
+      }, 500);
+    }
+    
     setTimeout(() => {
       setPdpProductId(null);
       setPdpVariantIdState(null);
@@ -257,6 +299,11 @@ export function StoreProvider({ children }) {
     if (viewMode === "pdp" && product.id === pdpProductId && variant?.id) {
       setPdpVariantIdState(variant.id);
       setPdpCategoryVacantLeft(false);
+      
+      if (typeof window !== "undefined") {
+        const newUrl = `/?productId=${product.id}&variantId=${variant.id}`;
+        window.history.replaceState(null, "", newUrl);
+      }
     }
   }, [products, viewMode, pdpProductId]);
 

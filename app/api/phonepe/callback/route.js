@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, adminMessaging } from "@/lib/firebase-admin";
 
 const CLIENT_ID = process.env.PHONEPE_MERCHANT_ID;
 const CLIENT_SECRET = process.env.PHONEPE_SALT_KEY;
@@ -108,6 +108,28 @@ export async function POST(request) {
         paymentStatusDetails: statusData,
         updatedAt: new Date().toISOString(),
       });
+
+      // Send Push Notification if SUCCESS
+      if (orderStatus === "SUCCESS") {
+        try {
+          const tokensSnap = await adminDb.ref("adminFCMTokens").once("value");
+          if (tokensSnap.exists()) {
+            const tokens = Object.keys(tokensSnap.val());
+            if (tokens.length > 0) {
+              await adminMessaging.sendEachForMulticast({
+                tokens,
+                notification: {
+                  title: "New Order Received! 🎉",
+                  body: `Order ${merchantOrderId} has been successfully placed.`
+                }
+              });
+              console.log(`Pushed notification to ${tokens.length} admins.`);
+            }
+          }
+        } catch (fcmErr) {
+          console.error("Failed to send FCM push notification:", fcmErr);
+        }
+      }
     }
 
     return NextResponse.json({ success: true, orderId: merchantOrderId, status: orderStatus });

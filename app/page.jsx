@@ -34,8 +34,18 @@ function HomePageInner() {
   useEffect(() => {
     if (productsLoading || openedFromQueryRef.current) return;
 
-    const variantId = searchParams.get("variantId");
-    const productId = searchParams.get("productId");
+    let variantId = searchParams.get("variantId");
+    let productId = searchParams.get("productId");
+
+    // If not in URL, check if they refreshed while in a PDP session
+    if (!variantId && !productId && typeof window !== "undefined") {
+      const sessionViewMode = sessionStorage.getItem("inkViewMode");
+      if (sessionViewMode === "pdp") {
+        productId = sessionStorage.getItem("inkProductId");
+        variantId = sessionStorage.getItem("inkVariantId") || null;
+      }
+    }
+
     if (!variantId && !productId) return;
 
     openedFromQueryRef.current = true;
@@ -91,6 +101,17 @@ function HomePageInner() {
                 textTransform: "uppercase",
                 letterSpacing: "2px",
                 cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = "#e11d48";
+                e.target.style.color = "#fff";
+                e.target.style.borderColor = "#e11d48";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = "none";
+                e.target.style.color = "#444";
+                e.target.style.borderColor = "#ccc";
               }}
             >
               Skip Intro

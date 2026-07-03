@@ -59,7 +59,7 @@ export async function buildCartResponse(supabase, userId) {
         userId: row.user_id,
         productId: row.product_id,
         productRefId: variant.product_ref_id,
-        name: product?.name || "Product",
+        name: color?.variant_name || product?.name || "Product",
         nameAr: product?.name_ar || null,
         brand: product?.brand || "Inkphyous",
         color: color?.color_name || variant.color_name || "Default",

@@ -9,6 +9,7 @@ const STATUS_COLORS = {
   SUCCESS: { bg: "#dcfce7", color: "#166534", label: "Order Placed" },
   PENDING: { bg: "#fef9c3", color: "#854d0e", label: "Pending" },
   FAILED: { bg: "#fee2e2", color: "#991b1b", label: "Failed" },
+  SHIPPING: { bg: "#e0e7ff", color: "#4338ca", label: "Shipping" },
   SHIPPED: { bg: "#dbeafe", color: "#1e40af", label: "Order Shipped" },
 };
 
@@ -133,7 +134,7 @@ export default function MyOrders() {
 
                   {isExpanded && (
                     <div className="order-card__details">
-                      {order.status === "SHIPPED" && order.shiprocket && (
+                      {(order.status === "SHIPPING" || order.status === "SHIPPED") && order.shiprocket && (
                         <div className="order-card__section" style={{ background: "#f8fafc", padding: "16px", borderRadius: "8px", border: "1px solid #e2e8f0", marginBottom: "20px" }}>
                           <h4 style={{ display: "flex", alignItems: "center", gap: "6px", color: "#1e40af", margin: 0 }}>
                             <Package size={16} /> Tracking Details

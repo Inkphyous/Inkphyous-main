@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useStore } from './providers/StoreProvider';
-import { getLegalContent } from '@/lib/LegalData';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function Legal() {
   const router = useRouter();
@@ -14,20 +14,37 @@ export default function Legal() {
   
   const pathParts = pathname.split('/').filter(Boolean);
   const slugFromPath = pathParts.length > 1 ? pathParts[1] : null;
-  const initialTab = slugFromPath || searchParams.get('tab') || 'home';
-  
-  const [activePage, setActivePage] = useState(initialTab);
+  const activePage = slugFromPath || searchParams.get('tab') || 'home';
 
+  const [policyContent, setPolicyContent] = useState({ sections: [] });
+  const [loading, setLoading] = useState(false);
+  
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    
-    const basePath = pathParts[0] || 'legal';
-    const newUrl = activePage === 'home' ? `/${basePath}` : `/${basePath}/${activePage}`;
-    
-    if (pathname !== newUrl) {
-      window.history.pushState(null, '', newUrl);
-    }
-  }, [activePage, pathname, pathParts]);
+  }, [activePage]);
+
+  useEffect(() => {
+    const fetchPolicy = async () => {
+      if (activePage === 'home') return;
+      setLoading(true);
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from('legal_policies')
+        .select('sections')
+        .eq('page_name', activePage)
+        .eq('language', language)
+        .single();
+      
+      if (data && data.sections) {
+        setPolicyContent({ sections: data.sections });
+      } else {
+        setPolicyContent({ sections: [] });
+      }
+      setLoading(false);
+    };
+    fetchPolicy();
+  }, [activePage, language]);
 
   const renderHome = () => (
     <div className="min-h-[calc(100vh-80px)] flex items-center justify-center bg-transparent px-4 relative pt-16">
@@ -63,16 +80,16 @@ export default function Legal() {
 
         {/* Right Side */}
         <div className="flex-1 flex flex-col items-center md:items-start justify-center">
-          <button onClick={() => setActivePage('privacy')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
+          <button onClick={() => router.push('/legal/privacy')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('privacyPolicy')}
           </button>
-          <button onClick={() => setActivePage('terms')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
+          <button onClick={() => router.push('/legal/terms')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('termsConditions')}
           </button>
-          <button onClick={() => setActivePage('shipping')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
+          <button onClick={() => router.push('/legal/shipping')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('shippingPolicy')}
           </button>
-          <button onClick={() => setActivePage('returns')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
+          <button onClick={() => router.push('/legal/returns')} className="text-xl sm:text-2xl font-normal text-gray-800 hover:text-[#e11d48] transition-colors text-center md:text-left block" style={{ fontFamily: "var(--font-brand)", marginBottom: '24px' }}>
             {t('returnExchangePolicy')}
           </button>
         </div>
@@ -80,7 +97,7 @@ export default function Legal() {
     </div>
   );
 
-  const renderPolicyPage = (title, content) => (
+  const renderPolicyPage = (title) => (
     <div className="min-h-screen bg-transparent relative" style={{ paddingTop: '140px', paddingBottom: '100px' }}>
       <div className="fixed inset-0 -z-20">
         <div
@@ -92,7 +109,7 @@ export default function Legal() {
         />
       </div>
       <button
-        onClick={() => setActivePage('home')}
+        onClick={() => router.push('/legal')}
         className="shared-back-btn fixed top-[64px] left-4 sm:left-8 z-[60]"
       >
         <ArrowLeft size={16} strokeWidth={2} />
@@ -105,10 +122,13 @@ export default function Legal() {
         </h1>
 
         <div>
-          {content.sections.map((section, idx) => (
+          {loading ? (
+            <p className="text-gray-500 text-center py-10">Loading policy...</p>
+          ) : policyContent?.sections?.length > 0 ? (
+            policyContent.sections.map((section, idx) => (
             <div key={idx} id={`section-${idx}`} className="flex flex-col md:flex-row items-stretch">
               {/* Left Column (Topics) */}
-              <div className="w-full md:w-48 lg:w-64 flex-shrink-0 mb-6 md:mb-0 py-8">
+              <div className="w-full md:w-48 lg:w-64 flex-shrink-0 legal-left-col">
                 <a href={`#section-${idx}`} className="text-lg md:text-xl font-semibold text-gray-900 hover:text-[#e11d48] transition-colors block" style={{ fontFamily: 'var(--font-heading)' }}>
                   {section.title}
                 </a>
@@ -116,34 +136,36 @@ export default function Legal() {
               
               {/* Center Red Line */}
               <div className="hidden md:block flex-shrink-0" style={{ width: '0.5px', backgroundColor: '#e11d48', marginLeft: '12px', marginRight: '24px' }} />
-              <div className="block md:hidden h-[0.5px] w-16 bg-[#e11d48] my-6" />
+              <div className="block md:hidden h-[0.5px] w-16 bg-[#e11d48] mt-2 mb-3" />
 
               {/* Right Column (Content) */}
-              <div className="flex-1 min-w-0 py-8">
-                <div className="text-gray-800 text-sm md:text-base leading-relaxed">
-                  <div className="[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-4 [&_li]:pl-2 [&_h4]:font-semibold [&_h4]:text-lg [&_h4]:mb-4 [&_h4]:mt-8 space-y-8">
-                    {section.content}
-                  </div>
+              <div className="flex-1 min-w-0" style={{ paddingBottom: '80px' }}>
+                <div className="legal-content-wrapper text-gray-800 text-sm md:text-base leading-relaxed">
+                  <div 
+                    className="[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-4 [&_li]:pl-2 [&_h4]:font-semibold [&_h4]:text-lg [&_h4]:mb-4 [&_h4]:mt-4"
+                    dangerouslySetInnerHTML={{ __html: section.content }}
+                  />
                 </div>
               </div>
             </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-gray-500 text-center py-10">Policy not found.</p>
+          )}
         </div>
       </div>
     </div>
   );
 
-  const { shippingContent, termsContent, returnsContent, privacyContent } = getLegalContent(language, t);
-
   if (activePage === 'home') {
     return renderHome();
   } else if (activePage === 'privacy') {
-    return renderPolicyPage(t('privacyPolicy'), privacyContent);
+    return renderPolicyPage(t('privacyPolicy'));
   } else if (activePage === 'terms') {
-    return renderPolicyPage(t('termsConditions'), termsContent);
+    return renderPolicyPage(t('termsConditions'));
   } else if (activePage === 'shipping') {
-    return renderPolicyPage(t('shippingPolicy'), shippingContent);
+    return renderPolicyPage(t('shippingPolicy'));
   } else if (activePage === 'returns') {
-    return renderPolicyPage(t('returnExchangePolicy'), returnsContent);
+    return renderPolicyPage(t('returnExchangePolicy'));
   }
 }

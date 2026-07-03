@@ -187,9 +187,9 @@ export default function LogoScene({ onIntroComplete }) {
               transition: "all 0.2s ease",
             }}
             onMouseEnter={(e) => {
-              e.target.style.background = "#000";
+              e.target.style.background = "#e11d48";
               e.target.style.color = "#fff";
-              e.target.style.borderColor = "#000";
+              e.target.style.borderColor = "#e11d48";
             }}
             onMouseLeave={(e) => {
               e.target.style.background = "none";
