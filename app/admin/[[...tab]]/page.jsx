@@ -267,7 +267,7 @@ function ColorEditor({ value, onChange, colors }) {
 
 export default function AdminPage() {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const pathParts = pathname.split("/");
   const currentTabFromUrl = pathParts.length > 2 && pathParts[2] ? pathParts[2] : "products";
 
