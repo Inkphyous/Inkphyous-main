@@ -11,7 +11,6 @@ import { db } from "@/lib/firebase";
 import AdminSizeChart from "@/components/admin/AdminSizeChart";
 import AdminLegalities from "@/components/admin/AdminLegalities";
 import { FileText, Ruler } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
 
 const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 const COLOR_PALETTE = [
@@ -266,11 +265,6 @@ function ColorEditor({ value, onChange, colors }) {
 }
 
 export default function AdminPage() {
-  const router = useRouter();
-  const pathname = usePathname() || "";
-  const pathParts = pathname.split("/");
-  const currentTabFromUrl = pathParts.length > 2 && pathParts[2] ? pathParts[2] : "products";
-
   const [authLoading, setAuthLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [idToken, setIdToken] = useState("");
@@ -278,26 +272,26 @@ export default function AdminPage() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   
-  const [activeTab, setActiveTabState] = useState(currentTabFromUrl);
+  const [activeTab, setActiveTabState] = useState("products");
 
   useEffect(() => {
-    if (currentTabFromUrl) {
-      setActiveTabState(currentTabFromUrl);
-    }
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab") || "products";
+    setActiveTabState(tab);
     
     // Handle browser back/forward buttons seamlessly
     const handlePopState = () => {
-      const parts = window.location.pathname.split("/");
-      const tab = parts.length > 2 && parts[2] ? parts[2] : "products";
-      setActiveTabState(tab);
+      const params = new URLSearchParams(window.location.search);
+      const poppedTab = params.get("tab") || "products";
+      setActiveTabState(poppedTab);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [currentTabFromUrl]);
+  }, []);
 
   const setActiveTab = (tab) => {
     setActiveTabState(tab);
-    window.history.pushState(null, "", `/admin/${tab}`);
+    window.history.pushState(null, "", `/admin?tab=${tab}`);
   };
   const [usersList, setUsersList] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
