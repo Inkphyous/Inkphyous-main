@@ -38,7 +38,7 @@ export default async function sitemap() {
 
       if (variants) {
         const variantRoutes = variants.map((variant) => ({
-          url: `${baseUrl}/?productId=${variant.product_ref_id}&variantId=${variant.id}`,
+          url: `${baseUrl}/?productId=${variant.product_ref_id}&amp;variantId=${variant.id}`,
           lastModified: new Date(variant.updated_at || new Date()),
           changeFrequency: "weekly",
           priority: 0.7,
