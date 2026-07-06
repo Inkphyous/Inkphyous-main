@@ -29,6 +29,22 @@ export default async function sitemap() {
         }));
         routes.push(...productRoutes);
       }
+
+      // Also fetch all specific variants (colors)
+      const { data: variants } = await supabase
+        .from("product_variants")
+        .select("id:product_id, product_ref_id, updated_at")
+        .eq("is_active", true);
+
+      if (variants) {
+        const variantRoutes = variants.map((variant) => ({
+          url: `${baseUrl}/?productId=${variant.product_ref_id}&variantId=${variant.id}`,
+          lastModified: new Date(variant.updated_at || new Date()),
+          changeFrequency: "weekly",
+          priority: 0.7,
+        }));
+        routes.push(...variantRoutes);
+      }
     } catch (e) {
       console.error("Failed to fetch products for sitemap", e);
     }
