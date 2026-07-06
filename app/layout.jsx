@@ -5,10 +5,37 @@ import LoginRequiredPopup from "@/components/LoginRequiredPopup";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = {
-  title: "INKPHYOUS | Premium Streetwear",
-  description: "Premium streetwear brand featuring oversized jerseys, shorts, and trackpants with signature embroidery and prints.",
+  metadataBase: new URL('https://inkphyous.com'),
+  title: {
+    template: "%s | INKPHYOUS",
+    default: "INKPHYOUS | Premium Streetwear",
+  },
+  description: "INKPHYOUS — Premium streetwear brand featuring oversized jerseys, shorts, and trackpants with signature embroidery and prints.",
+  openGraph: {
+    title: "INKPHYOUS | Premium Streetwear",
+    description: "Premium streetwear brand featuring oversized jerseys, shorts, and trackpants with signature embroidery and prints.",
+    url: "https://inkphyous.com",
+    siteName: "INKPHYOUS",
+    images: [
+      {
+        url: "/logo.png",
+        width: 800,
+        height: 800,
+        alt: "INKPHYOUS Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "INKPHYOUS | Premium Streetwear",
+    description: "Premium streetwear brand featuring oversized jerseys, shorts, and trackpants with signature embroidery and prints.",
+    images: ["/logo.png"],
+  },
   icons: {
-    icon: "/logo.png",
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 

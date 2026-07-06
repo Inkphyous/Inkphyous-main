@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, ArrowLeft, User, ChevronDown, Menu } from "lucide-react";
+import { ShoppingBag, ArrowLeft, User, ChevronDown, Menu, Search } from "lucide-react";
 import InphyousLogo from "./InphyousLogo";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "./providers/StoreProvider";
@@ -33,6 +33,9 @@ export default function Header() {
   } = useStore();
   const isPDP = viewMode === "pdp";
   const [langOpen, setLangOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInputRef = useRef(null);
   
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileRef = useRef(null);
@@ -124,6 +127,76 @@ export default function Header() {
 
         {/* Right icons */}
         <div className="header__right-icons" style={isMobile ? { gap: "8px", right: "12px" } : {}}>
+          
+          {/* Search Bar (Desktop only for now, or unified) */}
+          {!isMobile && (
+            <div style={{ position: "relative", display: "flex", alignItems: "center", marginRight: "8px" }}>
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (searchQuery.trim()) {
+                    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                    setSearchExpanded(false);
+                  }
+                }}
+                style={{ display: "flex", alignItems: "center" }}
+              >
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={(e) => {
+                    if (!searchQuery) {
+                      setSearchExpanded(false);
+                    }
+                  }}
+                  style={{
+                    padding: searchExpanded ? "6px 30px 6px 12px" : "6px 0",
+                    borderRadius: "20px",
+                    border: searchExpanded ? "1px solid #ccc" : "1px solid transparent",
+                    background: searchExpanded ? "rgba(0, 0, 0, 0.03)" : "transparent",
+                    color: "#000",
+                    fontSize: "13px",
+                    outline: "none",
+                    width: searchExpanded ? "180px" : "0px",
+                    opacity: searchExpanded ? 1 : 0,
+                    transition: "all 0.3s ease",
+                    pointerEvents: searchExpanded ? "auto" : "none"
+                  }}
+                />
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    if (!searchExpanded) {
+                      e.preventDefault();
+                      setSearchExpanded(true);
+                      setTimeout(() => searchInputRef.current?.focus(), 50);
+                    } else if (searchQuery.trim()) {
+                      e.preventDefault();
+                      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                      setSearchExpanded(false);
+                    }
+                  }}
+                  style={{ 
+                    position: "absolute", 
+                    right: searchExpanded ? "8px" : "0", 
+                    background: "none", 
+                    border: "none", 
+                    color: "#000", 
+                    cursor: "pointer", 
+                    display: "flex", 
+                    padding: searchExpanded ? "0" : "6px",
+                    transition: "all 0.3s ease",
+                    zIndex: 10
+                  }}
+                >
+                  <Search size={16} strokeWidth={2.5} />
+                </button>
+              </form>
+            </div>
+          )}
           {/* Login / Profile Dropdown Button — ONLY DESKTOP */}
           {!isMobile && (
             user ? (
@@ -205,10 +278,6 @@ export default function Header() {
             style={isMobile ? { background: "transparent", padding: 0, width: "auto", height: "auto", minWidth: 0, minHeight: 0 } : {}}
             onClick={() => {
               if (!requireAuth("Login to continue")) return;
-              if (viewMode === "pdp") {
-                closePDP();
-                switchView("carousel");
-              }
               router.push("/cart");
             }}
           >

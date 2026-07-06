@@ -44,7 +44,7 @@ export default function GridView() {
               <div className="grid-view__image-container">
                 <img
                   src={img}
-                  alt={product.name}
+                  alt={`${product.name} - ${product.category || 'Apparel'} by INKPHYOUS`}
                   loading="lazy"
                   decoding="async"
                 />

@@ -153,6 +153,7 @@ export default function ProductDetail() {
   const wasPinching = useRef(false);
   
   const overlayRef = useRef(null);
+  const detailsWrapRef = useRef(null);
   const swipeRef = useRef({ active: false, startX: 0, startY: 0, dx: 0, dy: 0 });
   const [isMobile, setIsMobile] = useState(false);
 
@@ -202,6 +203,40 @@ export default function ProductDetail() {
     }
     return () => document.body.classList.remove("lightbox-open");
   }, [lightboxIndex]);
+
+  useEffect(() => {
+    if (activeAccordion && detailsWrapRef.current) {
+      // Small delay to allow DOM to expand during animation
+      setTimeout(() => {
+        if (detailsWrapRef.current) {
+          detailsWrapRef.current.scrollTo({
+            top: detailsWrapRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }, 150);
+    }
+  }, [activeAccordion]);
+
+  const handlePanEnd = () => {
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleOverlayScroll = (e) => {
+    const target = e.target;
+    const details = detailsWrapRef.current;
+    if (!details) return;
+
+    // Check if the main overlay has reached the bottom
+    const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20;
+
+    if (isAtBottom) {
+      details.scrollTo({
+        top: details.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  };
 
   const handleTouchStartLightbox = useCallback((e) => {
     if (e.touches.length === 2) {
@@ -594,8 +629,10 @@ export default function ProductDetail() {
 
   return (
     <motion.div
-      ref={overlayRef}
+      key="pdp-overlay"
       className="pdp-overlay"
+      ref={overlayRef}
+      onScroll={handleOverlayScroll}
       initial={{ y: "100%" }}
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
@@ -660,7 +697,7 @@ export default function ProductDetail() {
             ))}
           </div>
 
-          <div className="pdp-overlay__details-wrap">
+          <div className="pdp-overlay__details-wrap" ref={detailsWrapRef}>
             <motion.div
               className="pdp-overlay__details"
               initial={{ opacity: 0, y: 30 }}

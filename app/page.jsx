@@ -1,208 +1,173 @@
-"use client";
+import HomeClient from "./HomeClient";
+import { getSupabaseAdmin, hasSupabaseAdminEnv } from "@/lib/supabase/server";
 
-import { Suspense, lazy, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { Plus } from "lucide-react";
-import { useStore } from "@/components/providers/StoreProvider";
-import Header from "@/components/Header";
-import Sidebar from "@/components/Sidebar";
-import Carousel from "@/components/Carousel";
-import ProductDetail from "@/components/ProductDetail";
-import GridView from "@/components/GridView";
-import Footer from "@/components/Footer";
+// Helper to fetch a single product from Supabase
+async function getProductBySlugOrId(productId) {
+  if (!hasSupabaseAdminEnv() || !productId) return null;
+  const supabase = getSupabaseAdmin();
+  
+  // productId is technically variant_product_id in cart/wishlist, but the URL param usually passes the product id or variant id.
+  // Actually, wait. The URL param `productId` is usually the `catalog_products.id` OR `catalog_products.slug`.
+  // Let's check how the URL is constructed in the app. The URL uses `?productId=...`.
+  // If it's a UUID, we query by id. If it's a string, we query by slug.
+  let query = supabase.from("catalog_products").select("*").eq("is_active", true);
+  
+  // Simple UUID check
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId);
+  if (isUUID) {
+    query = query.eq("id", productId);
+  } else {
+    // If not UUID, it might be slug
+    query = query.eq("slug", productId);
+  }
 
-const LogoScene = lazy(() => import("@/components/LogoScene"));
+  const { data, error } = await query.single();
+  if (error || !data) {
+    // Fallback: check if they passed a variant id directly
+    const { data: variantData } = await supabase
+      .from("product_variants")
+      .select("product_ref_id")
+      .eq("product_id", productId)
+      .single();
+      
+    if (variantData && variantData.product_ref_id) {
+       const { data: realProduct } = await supabase
+        .from("catalog_products")
+        .select("*")
+        .eq("id", variantData.product_ref_id)
+        .single();
+       return realProduct;
+    }
+    return null;
+  }
+  
+  return data;
+}
 
-function HomePageInner() {
-  const searchParams = useSearchParams();
-  const openedFromQueryRef = useRef(false);
-  const {
-    showIntro,
-    setShowIntro,
-    viewMode,
-    productsLoading,
-    openPDPByProductAndVariant,
-    categories,
-    activeCategory,
-    setActiveCategory,
-    t,
-  } = useStore();
-  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+export async function generateMetadata({ searchParams }) {
+  // Await searchParams in Next.js 15
+  const params = await searchParams;
+  const productId = params?.productId;
 
-  useEffect(() => {
-    if (productsLoading || openedFromQueryRef.current) return;
+  if (productId) {
+    const product = await getProductBySlugOrId(productId);
+    
+    if (product) {
+      const title = `${product.name} | INKPHYOUS`;
+      const description = (product.description || product.summary || "Premium streetwear").substring(0, 150);
+      const url = `https://inkphyous.com/?productId=${productId}`;
 
-    let variantId = searchParams.get("variantId");
-    let productId = searchParams.get("productId");
+      return {
+        title,
+        description,
+        alternates: {
+          canonical: url,
+        },
+        openGraph: {
+          title,
+          description,
+          url,
+          siteName: 'INKPHYOUS',
+          images: product.main_image_url ? [
+            {
+              url: product.main_image_url,
+              width: 800,
+              height: 800,
+              alt: `${product.name} - oversized streetwear by INKPHYOUS`,
+            }
+          ] : [],
+          locale: 'en_US',
+          type: 'website',
+        },
+        twitter: {
+          card: 'summary_large_image',
+          title,
+          description,
+          images: product.main_image_url ? [product.main_image_url] : [],
+        },
+      };
+    } else {
+      return {
+        title: "Product Not Found | INKPHYOUS",
+        description: "The requested product could not be found.",
+      };
+    }
+  }
 
-    // If not in URL, check if they refreshed while in a PDP session
-    if (!variantId && !productId && typeof window !== "undefined") {
-      const sessionViewMode = sessionStorage.getItem("inkViewMode");
-      if (sessionViewMode === "pdp") {
-        productId = sessionStorage.getItem("inkProductId");
-        variantId = sessionStorage.getItem("inkVariantId") || null;
+  return {}; // Use default metadata from layout.jsx
+}
+
+export default async function Page({ searchParams }) {
+  const params = await searchParams;
+  const productId = params?.productId;
+  let product = null;
+
+  if (productId) {
+    product = await getProductBySlugOrId(productId);
+  }
+
+  const orgJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "INKPHYOUS",
+    "url": "https://inkphyous.com",
+    "logo": "https://inkphyous.com/logo.png"
+  };
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "INKPHYOUS",
+    "url": "https://inkphyous.com",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://inkphyous.com/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  };
+
+  let productJsonLd = null;
+  if (product) {
+    productJsonLd = {
+      "@context": "https://schema.org/",
+      "@type": "Product",
+      "name": product.name,
+      "image": product.main_image_url ? [product.main_image_url] : [],
+      "description": product.description || product.summary,
+      "sku": product.id,
+      "brand": {
+        "@type": "Brand",
+        "name": "INKPHYOUS"
+      },
+      "url": `https://inkphyous.com/?productId=${productId}`,
+      "offers": {
+        "@type": "Offer",
+        "url": `https://inkphyous.com/?productId=${productId}`,
+        "priceCurrency": "INR",
+        "price": product.discount_price_inr || product.price_inr,
+        "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition"
       }
-    }
-
-    if (!variantId && !productId) return;
-
-    openedFromQueryRef.current = true;
-    openPDPByProductAndVariant({ productId, variantId });
-  }, [productsLoading, searchParams, openPDPByProductAndVariant]);
-
-  useEffect(() => {
-    if (viewMode !== "carousel") {
-      setMobileCategoriesOpen(false);
-    }
-  }, [viewMode]);
-
-  if (showIntro) {
-    return (
-      <Suspense
-        fallback={
-          <div
-            style={{
-              position: "fixed",
-              bottom: "40px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "16px",
-              zIndex: 10001,
-            }}
-          >
-            <p
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "12px",
-                color: "#999",
-                fontWeight: 500,
-                pointerEvents: "none",
-                opacity: 0, // Keep space reserved but hidden while loading
-              }}
-            >
-              Loading...
-            </p>
-            <button
-              onClick={() => setShowIntro(false)}
-              style={{
-                padding: "10px 24px",
-                border: "1px solid #ccc",
-                borderRadius: "24px",
-                background: "none",
-                color: "#444",
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "12px",
-                fontWeight: "500",
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = "#e11d48";
-                e.target.style.color = "#fff";
-                e.target.style.borderColor = "#e11d48";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = "none";
-                e.target.style.color = "#444";
-                e.target.style.borderColor = "#ccc";
-              }}
-            >
-              Skip Intro
-            </button>
-          </div>
-        }
-      >
-        <LogoScene onIntroComplete={() => setShowIntro(false)} />
-      </Suspense>
-    );
+    };
   }
 
   return (
     <>
-      <Header />
-      <Sidebar />
-
-      {(viewMode === "carousel" || viewMode === "grid") && (
-        <div className={`mobile-category-fab ${mobileCategoriesOpen ? "is-open" : ""}`}>
-          <button
-            className="mobile-category-fab__toggle"
-            onClick={() => setMobileCategoriesOpen((prev) => !prev)}
-            aria-label="Toggle categories"
-          >
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55)", 
-              transform: mobileCategoriesOpen ? "rotate(45deg)" : "rotate(0deg)"
-            }}>
-              <Plus size={18} strokeWidth={2.5} />
-            </div>
-          </button>
-
-          <AnimatePresence>
-            {mobileCategoriesOpen && (
-              <motion.div
-                className="mobile-category-panel"
-                initial={{ opacity: 0, scale: 0.2, y: -6, x: -6 }}
-                animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-                exit={{ opacity: 0, scale: 0.2, y: -6, x: -6 }}
-                transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                style={{ transformOrigin: "top left" }}
-              >
-                {categories.map((cat) => {
-                  const isActive = activeCategory === cat;
-                  return (
-                    <motion.button
-                      key={cat}
-                      className={`sidebar__category mobile-category-panel__item ${
-                        isActive ? "sidebar__category--active" : "sidebar__category--sm"
-                      }`}
-                      onClick={() => {
-                        setActiveCategory(cat);
-                        setMobileCategoriesOpen(false);
-                      }}
-                      layout
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    >
-                      {cat === "All"
-                        ? t("all").toUpperCase()
-                        : t(cat.toLowerCase()).toUpperCase()}
-                    </motion.button>
-                  );
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      {productJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        />
       )}
-
-      {(viewMode === "carousel" || viewMode === "pdp") && <Carousel />}
-
-      <AnimatePresence mode="wait">
-        {viewMode === "grid" && <GridView key="grid" />}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {viewMode === "pdp" && <ProductDetail key="pdp" />}
-      </AnimatePresence>
-
-      <Footer />
+      <HomeClient />
     </>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <Suspense fallback={null}>
-      <HomePageInner />
-    </Suspense>
   );
 }
