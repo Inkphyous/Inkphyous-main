@@ -504,6 +504,7 @@ export default function ProductDetail() {
       <motion.div
         ref={overlayRef}
         className="pdp-overlay"
+        onScroll={handleScroll}
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
