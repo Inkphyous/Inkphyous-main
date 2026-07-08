@@ -597,8 +597,6 @@ img {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 70vh;
-  overflow-y: auto;
   box-shadow: none;
 }
 
