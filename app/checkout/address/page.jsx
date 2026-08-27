@@ -1,4 +1,5 @@
 import AddressPage from "@/components/AddressPage";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata = {
@@ -9,6 +10,7 @@ export const metadata = {
 export default function CheckoutAddressPage() {
   return (
     <>
+      <Header />
       <AddressPage />
       <Footer />
     </>

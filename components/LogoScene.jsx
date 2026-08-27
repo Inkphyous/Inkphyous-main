@@ -104,13 +104,33 @@ export default function LogoScene({ onIntroComplete }) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "white",
+        background: "black",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 9999,
       }}
     >
+      {/* Background Video */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          zIndex: 0,
+          pointerEvents: "none",
+          opacity: 0.8,
+        }}
+      >
+        <source src="/output2.webm" type="video/webm" />
+      </video>
+
       {/* White fade overlay */}
       <div
         style={{
@@ -124,7 +144,7 @@ export default function LogoScene({ onIntroComplete }) {
         }}
       />
 
-      <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} onClick={handleClick}>
+      <div style={{ position: "absolute", inset: 0, cursor: "pointer", zIndex: 1, filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.6))" }} onClick={handleClick}>
         <Canvas
           style={{ width: "100vw", height: "100vh" }}
           camera={{ position: [0, 0.4, 10], fov: 45 }}
@@ -161,9 +181,10 @@ export default function LogoScene({ onIntroComplete }) {
             style={{
               fontFamily: "'Inter', sans-serif",
               fontSize: "12px",
-              color: "#444",
+              color: "#fff",
               fontWeight: 500,
               pointerEvents: "none",
+              textShadow: "0 2px 8px rgba(0,0,0,0.8)",
               animation: "pulseText 2s ease-in-out infinite",
             }}
           >
@@ -173,14 +194,15 @@ export default function LogoScene({ onIntroComplete }) {
           <button
             onClick={handleZoomEnd}
             style={{
-              background: "none",
-              border: "1px solid #ccc",
+              background: "#000",
+              border: "1px solid #000",
               padding: "10px 24px",
               borderRadius: "24px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
               cursor: "pointer",
               fontFamily: "'Inter', sans-serif",
               fontSize: "12px",
-              color: "#444",
+              color: "#fff",
               fontWeight: 500,
               textTransform: "uppercase",
               letterSpacing: "2px",
@@ -192,9 +214,9 @@ export default function LogoScene({ onIntroComplete }) {
               e.target.style.borderColor = "#e11d48";
             }}
             onMouseLeave={(e) => {
-              e.target.style.background = "none";
-              e.target.style.color = "#444";
-              e.target.style.borderColor = "#ccc";
+              e.target.style.background = "#000";
+              e.target.style.color = "#fff";
+              e.target.style.borderColor = "#000";
             }}
           >
             Skip Intro

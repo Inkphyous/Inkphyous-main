@@ -139,7 +139,7 @@ export default function Legal() {
               <div className="block md:hidden h-[0.5px] w-16 bg-[#e11d48] mt-2 mb-3" />
 
               {/* Right Column (Content) */}
-              <div className="flex-1 min-w-0" style={{ paddingBottom: '80px' }}>
+              <div className="flex-1 min-w-0" style={{ paddingBottom: '24px' }}>
                 <div className="legal-content-wrapper text-gray-800 text-sm md:text-base leading-relaxed">
                   <div 
                     className="[&_ul]:ml-6 [&_ul]:list-disc [&_ul]:space-y-4 [&_li]:pl-2 [&_h4]:font-semibold [&_h4]:text-lg [&_h4]:mb-4 [&_h4]:mt-4"

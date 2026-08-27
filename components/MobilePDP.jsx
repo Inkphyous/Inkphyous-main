@@ -213,43 +213,51 @@ export default function MobilePDP({
         </div>
         {/* Row 1: Brand/Category & Price */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "6px" }}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`mobile-header-${variant.id}`}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              style={{ display: "flex", alignItems: "baseline", gap: "10px" }}
-            >
-              <h1
-                style={{
-                  fontFamily: "var(--font-brand)",
-                  fontSize: "28px",
-                  fontWeight: 800,
-                  letterSpacing: "1px",
-                  color: "var(--color-text)",
-                  margin: 0,
-                  lineHeight: 1,
-                }}
-              >
-                {variant.name || product.brand}
-              </h1>
-              <span
-                style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontSize: "24px",
-                  fontWeight: 800,
-                  color: "transparent",
-                  WebkitTextStroke: "1px #e11d48",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                }}
-              >
-                {t(product.category.toLowerCase())}
-              </span>
-            </motion.div>
-          </AnimatePresence>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+            <div style={{ overflow: "hidden", position: "relative" }}>
+              <AnimatePresence mode="popLayout">
+                <motion.h1
+                  key={`mobile-brand-${variant.id}`}
+                  initial={{ y: "150%" }}
+                  animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.15 } }}
+                  exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                  style={{
+                    fontFamily: "var(--font-brand)",
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    letterSpacing: "1px",
+                    color: "var(--color-text)",
+                    margin: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  {variant.name || product.brand}
+                </motion.h1>
+              </AnimatePresence>
+            </div>
+            <div style={{ overflow: "hidden", position: "relative" }}>
+              <AnimatePresence mode="popLayout">
+                <motion.span
+                  key={`mobile-category-${variant.id}`}
+                  initial={{ y: "150%" }}
+                  animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.2 } }}
+                  exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                  style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontSize: "24px",
+                    fontWeight: 800,
+                    color: "transparent",
+                    WebkitTextStroke: "1px #e11d48",
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                    display: "inline-block",
+                  }}
+                >
+                  {t(product.category.toLowerCase())}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          </div>
           <div
             style={{
               fontFamily: "'Barlow Condensed', sans-serif",
@@ -266,25 +274,26 @@ export default function MobilePDP({
 
         {/* Row 2: Variant Name & Swatches */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={`mobile-desc-${variant.id}`}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "18px",
-                fontWeight: 400,
-                letterSpacing: "1px",
-                color: "var(--color-text)",
-                margin: 0,
-              }}
-            >
-              {variant.semiDescription || variant.name}
-            </motion.p>
-          </AnimatePresence>
+          <div style={{ overflow: "hidden", position: "relative" }}>
+            <AnimatePresence mode="popLayout">
+              <motion.p
+                key={`mobile-desc-${variant.id}`}
+                initial={{ y: "150%" }}
+                animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.25 } }}
+                exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: "18px",
+                  fontWeight: 400,
+                  letterSpacing: "1px",
+                  color: "var(--color-text)",
+                  margin: 0,
+                }}
+              >
+                {variant.semiDescription || variant.name}
+              </motion.p>
+            </AnimatePresence>
+          </div>
           <div
             style={{
               display: "flex",
@@ -463,20 +472,25 @@ export default function MobilePDP({
       </div>
 
       {/* Description */}
-      <div
-        style={{
-          fontFamily: "var(--font-body)",
-          fontSize: "12px",
-          color: "#000",
-          lineHeight: 1.7,
-          margin: "0 0 14px 0",
-        }}
-        dangerouslySetInnerHTML={{
-          __html: language === "ar" && product.descriptionAr
-            ? product.descriptionAr
-            : (variant.description || product.description)
-        }}
-      />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`mobile-desc-full-${variant.id}`}
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -10, opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: "12px",
+            color: "#000",
+            lineHeight: 1.7,
+            margin: "0 0 14px 0",
+          }}
+          dangerouslySetInnerHTML={{
+            __html: language === "ar" ? (variant.descriptionAr || product.descriptionAr) : (variant.description || product.description)
+          }}
+        />
+      </AnimatePresence>
 
       {/* Horizontal scroll preview images */}
       <div

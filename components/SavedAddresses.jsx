@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useStore } from "./providers/StoreProvider";
 import AddressForm from "./AddressForm";
 import { ArrowLeft, MapPin, Pencil, Trash2, Plus, X } from "lucide-react";
+import Header from "./Header";
+import Footer from "./Footer";
 
 export default function SavedAddresses() {
   const router = useRouter();
@@ -121,15 +123,21 @@ export default function SavedAddresses() {
 
   if (authLoading || loading) {
     return (
-      <div className="saved-addresses-page">
-        <div className="address-page__bg" />
-        <div className="address-page__loading">Loading...</div>
-      </div>
+      <>
+        <Header />
+        <div className="saved-addresses-page">
+          <div className="address-page__bg" />
+          <div className="address-page__loading">Loading...</div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <div className="saved-addresses-page">
+    <>
+      <Header />
+      <div className="saved-addresses-page">
       <div className="address-page__bg" />
 
       <button 
@@ -233,5 +241,7 @@ export default function SavedAddresses() {
         )}
       </div>
     </div>
+    <Footer />
+    </>
   );
 }

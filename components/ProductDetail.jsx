@@ -650,32 +650,51 @@ export default function ProductDetail() {
         <div className="pdp-overlay__grid">
           <div className="pdp-overlay__gallery">
             <div className="pdp-overlay__brand-section" style={{ marginBottom: "20px" }}>
-              <AnimatePresence mode="wait">
-                <motion.div 
-                  key={`header-${variant.id}`}
-                  style={{ display: "flex", alignItems: "baseline", gap: "14px" }}
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <h1 className="pdp-overlay__brand">{variant.name || product.brand}</h1>
-                  <span className="pdp-overlay__category">{t(product.category.toLowerCase())}</span>
-                </motion.div>
-              </AnimatePresence>
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={variant.id}
-                  className="pdp-overlay__variant"
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  style={{ margin: "4px 0 0 0" }}
-                >
-                  {variant.semiDescription || variant.name}
-                </motion.p>
-              </AnimatePresence>
+              <div 
+                style={{ display: "flex", alignItems: "baseline", gap: "14px" }}
+              >
+                <div style={{ overflow: "hidden", position: "relative" }}>
+                  <AnimatePresence mode="popLayout">
+                    <motion.h1 
+                      key={`header-brand-${variant.id}`}
+                      className="pdp-overlay__brand"
+                      initial={{ y: "150%" }}
+                      animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.15 } }}
+                      exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                    >
+                      {variant.name || product.brand}
+                    </motion.h1>
+                  </AnimatePresence>
+                </div>
+                <div style={{ overflow: "hidden", position: "relative" }}>
+                  <AnimatePresence mode="popLayout">
+                    <motion.span 
+                      key={`header-category-${variant.id}`}
+                      className="pdp-overlay__category"
+                      initial={{ y: "150%" }}
+                      animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.2 } }}
+                      exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                      style={{ display: "inline-block" }}
+                    >
+                      {t(product.category.toLowerCase())}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
+              </div>
+              <div style={{ overflow: "hidden", position: "relative", marginTop: "4px" }}>
+                <AnimatePresence mode="popLayout">
+                  <motion.p
+                    key={`header-variant-${variant.id}`}
+                    className="pdp-overlay__variant"
+                    initial={{ y: "150%" }}
+                    animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.25 } }}
+                    exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                    style={{ margin: 0 }}
+                  >
+                    {variant.semiDescription || variant.name}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
             </div>
 
             {galleryImages.map((img, idx) => (
@@ -707,10 +726,47 @@ export default function ProductDetail() {
             >
                   <div className="pdp-overlay__mobile-header">
                     <div className="pdp-overlay__mobile-brand-row">
-                      <h1 className="pdp-overlay__brand">{variant.name || product.brand}</h1>
-                      <span className="pdp-overlay__category">{t(product.category.toLowerCase())}</span>
+                      <div style={{ overflow: "hidden", position: "relative" }}>
+                        <AnimatePresence mode="popLayout">
+                          <motion.h1 
+                            key={`mob-header-brand-${variant.id}`}
+                            className="pdp-overlay__brand"
+                            initial={{ y: "150%" }}
+                            animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.15 } }}
+                            exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                          >
+                            {variant.name || product.brand}
+                          </motion.h1>
+                        </AnimatePresence>
+                      </div>
+                      <div style={{ overflow: "hidden", position: "relative" }}>
+                        <AnimatePresence mode="popLayout">
+                          <motion.span 
+                            key={`mob-header-category-${variant.id}`}
+                            className="pdp-overlay__category"
+                            initial={{ y: "150%" }}
+                            animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.2 } }}
+                            exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                            style={{ display: "inline-block" }}
+                          >
+                            {t(product.category.toLowerCase())}
+                          </motion.span>
+                        </AnimatePresence>
+                      </div>
                     </div>
-                    <p className="pdp-overlay__variant">{variant.semiDescription || variant.name}</p>
+                    <div style={{ overflow: "hidden", position: "relative" }}>
+                      <AnimatePresence mode="popLayout">
+                        <motion.p 
+                          key={`mob-desc-${variant.id}`}
+                          className="pdp-overlay__variant"
+                          initial={{ y: "150%" }}
+                          animate={{ y: 0, transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.25 } }}
+                          exit={{ y: "-150%", transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0 } }}
+                        >
+                          {variant.semiDescription || variant.name}
+                        </motion.p>
+                      </AnimatePresence>
+                    </div>
                   </div>
 
                   <div className="pdp-overlay__selection-block">
@@ -760,9 +816,9 @@ export default function ProductDetail() {
                   </div>
 
                     <AnimatePresence mode="wait">
-                      <motion.div key={`desc-${product.id}`} className="pdp-overlay__description"
+                      <motion.div key={`desc-${variant.id}`} className="pdp-overlay__description"
                         initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} transition={{ duration: 0.25 }}
-                        dangerouslySetInnerHTML={{ __html: language === "ar" && product.descriptionAr ? product.descriptionAr : product.description }}
+                        dangerouslySetInnerHTML={{ __html: language === "ar" ? (variant.descriptionAr || product.descriptionAr) : (variant.description || product.description) }}
                       />
                     </AnimatePresence>
 

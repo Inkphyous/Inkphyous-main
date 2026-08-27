@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "./providers/StoreProvider";
 import { ArrowLeft, Package, ChevronDown, ChevronUp } from "lucide-react";
+import Header from "./Header";
+import Footer from "./Footer";
 
 const STATUS_COLORS = {
   SUCCESS: { bg: "#dcfce7", color: "#166534", label: "Order Placed" },
@@ -104,7 +106,9 @@ export default function MyOrders() {
   }
 
   return (
-    <div className="orders-page">
+    <>
+      <Header />
+      <div className="orders-page">
       <div className="address-page__bg" />
 
       <button onClick={() => router.back()} className="cart-back-btn shared-back-btn">
@@ -237,5 +241,7 @@ export default function MyOrders() {
         )}
       </div>
     </div>
+    <Footer />
+    </>
   );
 }

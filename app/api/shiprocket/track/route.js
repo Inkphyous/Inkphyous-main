@@ -5,8 +5,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const awb = searchParams.get("awb");
 
-    if (!awb) {
-      return NextResponse.json({ success: false, error: "AWB code is required" }, { status: 400 });
+    if (!awb || awb.toLowerCase().includes("pending")) {
+      return NextResponse.json({ success: true, currentStatus: "Pending (Request Created)" });
     }
 
     // Authenticate with Shiprocket
