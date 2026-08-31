@@ -494,6 +494,7 @@ export default function MobilePDP({
 
       {/* Horizontal scroll preview images */}
       <div
+        className="pdp-overlay__mobile-previews"
         style={{
           display: "flex",
           flexDirection: "row",
@@ -504,7 +505,7 @@ export default function MobilePDP({
           width: "100%",
           WebkitOverflowScrolling: "touch",
           scrollSnapType: "x mandatory",
-          touchAction: "pan-x",
+          touchAction: "pan-x pan-y",
           scrollbarWidth: "none",
           marginBottom: "14px",
         }}
