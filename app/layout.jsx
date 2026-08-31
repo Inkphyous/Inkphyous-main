@@ -4,6 +4,7 @@ import { StoreProvider } from "@/components/providers/StoreProvider";
 import EditProfilePopup from "@/components/EditProfilePopup";
 import LoginRequiredPopup from "@/components/LoginRequiredPopup";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const rosemartin = localFont({
   src: "../public/fonts/Rosemartin.woff2",
@@ -61,6 +62,7 @@ export default function RootLayout({ children }) {
           <LoginRequiredPopup />
         </StoreProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
