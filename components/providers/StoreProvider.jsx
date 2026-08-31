@@ -352,8 +352,10 @@ export function StoreProvider({ children }) {
         dbUnsubscribe = onValue(userRef, (snapshot) => {
           setUserData(snapshot.exists() ? snapshot.val() : null);
         });
-        syncCartFromServer(currentUser.uid);
-        syncWishlistFromServer(currentUser.uid);
+        Promise.all([
+          syncCartFromServer(currentUser.uid),
+          syncWishlistFromServer(currentUser.uid),
+        ]);
       } else {
         setUserData(null);
         setCartItems([]);

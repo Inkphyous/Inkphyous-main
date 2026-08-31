@@ -1,8 +1,15 @@
 import "./globals.css";
+import localFont from "next/font/local";
 import { StoreProvider } from "@/components/providers/StoreProvider";
 import EditProfilePopup from "@/components/EditProfilePopup";
 import LoginRequiredPopup from "@/components/LoginRequiredPopup";
 import { Analytics } from "@vercel/analytics/next";
+
+const rosemartin = localFont({
+  src: "../public/fonts/Rosemartin.woff2",
+  display: "swap",
+  variable: "--font-brand",
+});
 
 export const metadata = {
   metadataBase: new URL('https://inkphyous.com'),
@@ -34,14 +41,14 @@ export const metadata = {
     images: ["/logo.png"],
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={rosemartin.variable}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, lazy, useState } from "react";
+import { Suspense, useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
@@ -13,7 +14,49 @@ import ProductDetail from "@/components/ProductDetail";
 import GridView from "@/components/GridView";
 import Footer from "@/components/Footer";
 
-const LogoScene = lazy(() => import("@/components/LogoScene"));
+const LogoScene = dynamic(() => import("@/components/LogoScene"), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "black",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999,
+      }}
+    >
+      <div
+        style={{
+          position: "fixed",
+          bottom: "40px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "16px",
+          zIndex: 10001,
+        }}
+      >
+        <p
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "12px",
+            color: "#999",
+            fontWeight: 500,
+            pointerEvents: "none",
+            opacity: 0,
+          }}
+        >
+          Loading...
+        </p>
+      </div>
+    </div>
+  ),
+});
 
 function HomePageInner() {
   const searchParams = useSearchParams();
@@ -59,69 +102,7 @@ function HomePageInner() {
   }, [viewMode]);
 
   if (showIntro) {
-    return (
-      <Suspense
-        fallback={
-          <div
-            style={{
-              position: "fixed",
-              bottom: "40px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "16px",
-              zIndex: 10001,
-            }}
-          >
-            <p
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "12px",
-                color: "#999",
-                fontWeight: 500,
-                pointerEvents: "none",
-                opacity: 0, // Keep space reserved but hidden while loading
-              }}
-            >
-              Loading...
-            </p>
-            <button
-              onClick={() => setShowIntro(false)}
-              style={{
-                padding: "10px 24px",
-                border: "1px solid #ccc",
-                borderRadius: "24px",
-                background: "none",
-                color: "#444",
-                fontFamily: "'Inter', sans-serif",
-                fontSize: "12px",
-                fontWeight: "500",
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = "#e11d48";
-                e.target.style.color = "#fff";
-                e.target.style.borderColor = "#e11d48";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = "none";
-                e.target.style.color = "#444";
-                e.target.style.borderColor = "#ccc";
-              }}
-            >
-              Skip Intro
-            </button>
-          </div>
-        }
-      >
-        <LogoScene onIntroComplete={() => setShowIntro(false)} />
-      </Suspense>
-    );
+    return <LogoScene onIntroComplete={() => setShowIntro(false)} />;
   }
 
   return (

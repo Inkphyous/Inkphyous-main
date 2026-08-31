@@ -117,6 +117,7 @@ export default function LogoScene({ onIntroComplete }) {
         loop
         muted
         playsInline
+        preload="metadata"
         style={{
           position: "absolute",
           inset: 0,
